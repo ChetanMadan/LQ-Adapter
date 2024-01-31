@@ -53,7 +53,7 @@ model = dict(
         bbox_head=[
             dict(
                 type='DIIHead',
-                num_classes=80,
+                num_classes=3,
                 num_ffn_fcs=2,
                 num_heads=8,
                 num_cls_fcs=1,
@@ -106,7 +106,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
@@ -146,7 +146,9 @@ train_pipeline = [
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
 ]
-data = dict(train=dict(pipeline=train_pipeline))
+data = dict(
+    batch_size=1,
+    train=dict(pipeline=train_pipeline))
 optimizer = dict(
     _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.05,
     paramwise_cfg=dict(

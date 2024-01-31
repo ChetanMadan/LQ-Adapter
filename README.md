@@ -156,3 +156,12 @@ If this work is helpful for your research, please consider citing the following 
 ## License
 
 This repository is released under the Apache 2.0 license as found in the [LICENSE](LICENSE.md) file.
+
+
+
+python test.py configs/ade20k/mask2former_beit_adapter_large_896_80k_ade20k_ss.py mask2former_beit_adapter_large_896_80k_ade20k.pth.tar --eval mIoU
+
+python test.py configs/mask_rcnn/mask_rcnn_uniperceiver_adapter_base_fpn_3x_coco.py detection/pretrained/mask_rcnn_uniperceiver_adapter_base_fpn_3x_coco.pth --eval mIoU
+
+
+sh dist_test.sh configs/htc++/htc++_beit_adapter_large_fpn_3x_coco.py /path/to/checkpoint_file 8 --eval bbox segm

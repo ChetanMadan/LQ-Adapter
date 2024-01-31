@@ -5,9 +5,11 @@ _base_ = [
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
-# pretrained = 'https://github.com/czczup/ViT-Adapter/releases/download/v0.3.1/' \
-#              'uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
-pretrained = 'pretrained/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
+
+classes = ('background','benign', 'malignant')
+
+pretrained = 'https://github.com/czczup/ViT-Adapter/releases/download/v0.3.1/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
+# pretrained = 'pretrained/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
 model = dict(
     backbone=dict(
         _delete_=True,
@@ -40,7 +42,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[

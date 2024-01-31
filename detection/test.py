@@ -175,7 +175,8 @@ def main():
     else:
         distributed = True
         init_dist(args.launcher, **cfg.dist_params)
-
+    print("DISTRIBUTED: ", distributed)
+    # distributed = False
     rank, _ = get_dist_info()
     # allows not to create
     if args.work_dir is not None and rank == 0:
@@ -236,6 +237,7 @@ def main():
             ]:
                 eval_kwargs.pop(key, None)
             eval_kwargs.update(dict(metric=args.eval, **kwargs))
+            # print(outputs[0])
             metric = dataset.evaluate(outputs, **eval_kwargs)
             print(metric)
             metric_dict = dict(config=args.config, metric=metric)

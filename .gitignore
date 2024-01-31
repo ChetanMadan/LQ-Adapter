@@ -129,3 +129,8 @@ detection/visual/
 trash/
 setr/
 swin/
+data/
+ops
+*.pth
+work_dirs/
+*.tar
