@@ -134,3 +134,4 @@ ops
 *.pth
 work_dirs/
 *.tar
+generated/

@@ -2,6 +2,7 @@
 _base_ = [
     '../_base_/models/mask_rcnn_r50_fpn.py',
     '../_base_/datasets/coco_instance.py',
+    # '../_base_/datasets/coco_instance_ddsm.py',
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
@@ -42,7 +43,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
@@ -80,6 +81,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
+    # dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
 data = dict(train=dict(pipeline=train_pipeline))

@@ -25,7 +25,7 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
 
         super().__init__(num_heads=num_heads, with_cp=with_cp, *args, **kwargs)
 
-        self.num_classes = 80
+        self.num_classes = 3
         self.cls_token = None
         self.num_block = len(self.layers)
         self.pretrain_size = (pretrain_size, pretrain_size)

@@ -16,12 +16,14 @@ from mmdet.core import eval_recalls
 from mmdet.datasets.api_wrappers import COCO, COCOeval
 from mmdet.datasets.builder import DATASETS
 from mmdet.datasets.custom import CustomDataset
-
+import torchvision
+import cv2
 
 @DATASETS.register_module()
 class CocoDatasetCustom(CustomDataset):
 
     CLASSES = ('background','benign', 'malignant')
+    filter_empty_gt = False
 
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142), (0, 0, 230),
                (106, 0, 228), (0, 60, 100), (0, 80, 100), (0, 0, 70),
@@ -62,6 +64,7 @@ class CocoDatasetCustom(CustomDataset):
 
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
         self.img_ids = self.coco.get_img_ids()
+        
         data_infos = []
         total_ann_ids = []
         for i in self.img_ids:
@@ -72,6 +75,7 @@ class CocoDatasetCustom(CustomDataset):
             total_ann_ids.extend(ann_ids)
         assert len(set(total_ann_ids)) == len(
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
+        # self.valid_inds = self._filter_imgs()
         return data_infos
 
     def get_ann_info(self, idx):
@@ -121,6 +125,7 @@ class CocoDatasetCustom(CustomDataset):
         for i, img_info in enumerate(self.data_infos):
             img_id = self.img_ids[i]
             if self.filter_empty_gt and img_id not in ids_in_cat:
+                print("filtering")
                 continue
             if min(img_info['width'], img_info['height']) >= min_size:
                 valid_inds.append(i)
@@ -246,7 +251,6 @@ class CocoDatasetCustom(CustomDataset):
         for idx in range(len(self)):
             img_id = self.img_ids[idx]
             det, seg = results[idx]
-            print(det)
             for label in range(len(det)):
                 # bbox results
                 bboxes = det[label]
@@ -338,11 +342,135 @@ class CocoDatasetCustom(CustomDataset):
             if bboxes.shape[0] == 0:
                 bboxes = np.zeros((0, 4))
             gt_bboxes.append(bboxes)
-
         recalls = eval_recalls(
             gt_bboxes, results, proposal_nums, iou_thrs, logger=logger)
         ar = recalls.mean(axis=1)
         return ar
+    
+    def get_iou(self, bb1, bb2):
+        """
+        Calculate the Intersection over Union (IoU) of two bounding boxes.
+
+        Parameters
+        ----------
+        bb1 : dict
+            Keys: {'x1', 'x2', 'y1', 'y2'}
+            The (x1, y1) position is at the top left corner,
+            the (x2, y2) position is at the bottom right corner
+        bb2 : dict
+            Keys: {'x1', 'x2', 'y1', 'y2'}
+            The (x, y) position is at the top left corner,
+            the (x2, y2) position is at the bottom right corner
+
+        Returns
+        -------
+        float
+            in [0, 1]
+        """
+        assert bb1[0] < bb1[2], (bb1, bb2)
+        assert bb1[1] < bb1[3], (bb1, bb2)
+        assert bb2[0] < bb2[2], (bb1, bb2)
+        assert bb2[1] < bb2[3], (bb1, bb2)
+
+        # determine the coordinates of the intersection rectangle
+        x_left = max(bb1[0], bb2[0])
+        y_top = max(bb1[1], bb2[1])
+        x_right = min(bb1[2], bb2[2])
+        y_bottom = min(bb1[3], bb2[3])
+
+        if x_right < x_left or y_bottom < y_top:
+            return 0.0
+
+        # The intersection of two axis-aligned bounding boxes is always an
+        # axis-aligned bounding box
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+        # compute the area of both AABBs
+        bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
+        bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
+
+        # compute the intersection over union by taking the intersection
+        # area and dividing it by the sum of prediction + ground-truth
+        # areas - the interesection area
+        iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
+        assert iou >= 0.0
+        assert iou <= 1.0
+        return iou
+
+
+    def rectContains(self, rect, pt):
+        return rect[0] < pt[0] < rect[2] and rect[1] < pt[1] < rect[3]
+
+    def custom_eval(self, results, proposal_nums, iou_thrs, logger=None):
+        gt_bboxes = []
+        true_positive = 0
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+        ious = []
+
+        res = self._segm2json(results)[0]
+
+        print("length of res", len(res))
+        for i in range(len(self.img_ids)):
+            ann_ids = self.coco.get_ann_ids(img_ids=self.img_ids[i])
+            ann_info = self.coco.load_anns(ann_ids)
+            if len(ann_info) == 0:
+                gt_bboxes.append(np.zeros((0, 4)))
+                continue
+            bboxes = []
+            for ann in ann_info:
+                if ann.get('ignore', False) or ann['iscrowd']:
+                    continue
+                x1, y1, w, h = ann['bbox']
+                bboxes.append([x1, y1, x1 + w, y1 + h])
+            bboxes = np.array(bboxes, dtype=np.float32)
+            if bboxes.shape[0] == 0:
+                bboxes = np.zeros((0, 4))
+            gt_bboxes.append(bboxes)
+
+
+            if len(bboxes) > 1:
+                print("NOOOOOOOOOOOOOOOO")
+
+            this_pred = list(filter(lambda x: x['image_id'] == self.img_ids[i], res))
+
+            if len(this_pred) > 0:
+
+                max_score= max([i['score'] for i in this_pred])
+                this_pred = list(filter(lambda x: x['score'] > 0.4, list(this_pred)))
+                this_pred = list(filter(lambda x: x['score'] == max_score, list(this_pred)))
+
+                x1, y1, w, h = this_pred[0]['bbox']
+                centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
+                
+                if bboxes[0] != np.zeros((0,4)):
+                    iou = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
+                    ious.append(iou)
+                    # print(bboxes[0], this_pred[0]['bbox'])
+                    file = self.coco.load_imgs(self.img_ids[i])[0]['filename']
+                    img = cv2.imread(f"data/DDSM_2k_yolo_v5/images/{file}")
+
+                    cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=2)
+                    cv2.rectangle(img, (int(bboxes[0][0]), int(bboxes[0][1])), (int(bboxes[0][2]), int(bboxes[0][3])), color=(0,255,0), thickness=2)
+                    
+                    cv2.imwrite(f"generated/ddsm/{file}.png", img)
+
+                    if self.rectContains(bboxes[0], centroid):
+                        true_positive +=1
+                    else:
+                        false_positive+=1
+            else:
+                false_negative+=1
+
+        print("precision: ", true_positive/(true_positive+false_positive))
+        print("recall: ", true_positive/(true_positive+false_negative))
+        print("IOU: ", sum(ious)/ len(ious))
+        # recalls = eval_recalls(
+        #     gt_bboxes, results, proposal_nums, iou_thrs, logger=logger)
+        # ar = recalls.mean(axis=1)
+        # return ar
+
 
     def format_results(self, results, jsonfile_prefix=None, **kwargs):
         """Format the results to json (standard format for COCO evaluation).
@@ -450,6 +578,9 @@ class CocoDatasetCustom(CustomDataset):
                 raise KeyError(f'{metric} is not in results')
             try:
                 predictions = mmcv.load(result_files[metric])
+                self.custom_eval(
+                    results, proposal_nums, iou_thrs, logger='silent')
+
                 if iou_type == 'segm':
                     # Refer to https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/coco.py#L331  # noqa
                     # When evaluating mask AP, if the results contain bbox,

@@ -5,7 +5,7 @@
 # data_root = 'data/coco/'
 
 dataset_type = 'CocoDatasetCustom'
-data_root = 'data/GBCU-Shared/'
+data_root = 'data/DDSM_2k_yolo_v5/'
 
 
 classes = ('background', 'malignant', 'benign')
@@ -56,18 +56,18 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'train_new.json',
-               img_prefix=data_root + 'imgs/',
+               ann_file=data_root + 'annotations/train.json',
+               img_prefix=data_root + 'train/images/',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'test_new.json',
-             img_prefix=data_root + 'imgs/',
+             ann_file=data_root + 'annotations/val_new.json',
+             img_prefix=data_root + 'val/images/',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'test_new.json',
-              img_prefix=data_root + 'imgs/',
+              ann_file=data_root + 'annotations/test_new.json',
+              img_prefix=data_root + 'test/mal/images/',
               classes=classes,
               pipeline=test_pipeline))
 
