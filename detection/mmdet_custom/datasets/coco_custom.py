@@ -6,6 +6,7 @@ import os.path as osp
 import tempfile
 import warnings
 from collections import OrderedDict
+import traceback
 
 import mmcv
 import numpy as np
@@ -16,15 +17,22 @@ from mmdet.core import eval_recalls
 from mmdet.datasets.api_wrappers import COCO, COCOeval
 from mmdet.datasets.builder import DATASETS
 from mmdet.datasets.custom import CustomDataset
-import torchvision
 import cv2
+from sklearn.metrics import confusion_matrix
+
+dataset = "GBCU-Shared"
+# dataset = "DDSM_2k_yolo_v5"
+# dataset = "ddsm"
 
 @DATASETS.register_module()
 class CocoDatasetCustom(CustomDataset):
 
-    CLASSES = ('background','benign', 'malignant')
+    if dataset == "GBCU-Shared":
+        CLASSES = ('background','benign', 'malignant')
+    else:
+        CLASSES = ('background','malignant')
     filter_empty_gt = False
-
+    # CLASSES = ('malignant', 'background','benign')
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142), (0, 0, 230),
                (106, 0, 228), (0, 60, 100), (0, 80, 100), (0, 0, 70),
                (0, 0, 192), (250, 170, 30), (100, 170, 30), (220, 220, 0),
@@ -61,8 +69,8 @@ class CocoDatasetCustom(CustomDataset):
         # The order of returned `cat_ids` will not
         # change with the order of the CLASSES
         self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
-
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
+        print(self.cat_ids, self.CLASSES)
         self.img_ids = self.coco.get_img_ids()
         
         data_infos = []
@@ -259,8 +267,8 @@ class CocoDatasetCustom(CustomDataset):
                     data['image_id'] = img_id
                     data['bbox'] = self.xyxy2xywh(bboxes[i])
                     data['score'] = float(bboxes[i][4])
-                    
                     data['category_id'] = self.cat_ids[label]
+                    
                     bbox_json_results.append(data)
 
                 # segm results
@@ -397,7 +405,6 @@ class CocoDatasetCustom(CustomDataset):
         assert iou <= 1.0
         return iou
 
-
     def rectContains(self, rect, pt):
         return rect[0] < pt[0] < rect[2] and rect[1] < pt[1] < rect[3]
 
@@ -408,10 +415,13 @@ class CocoDatasetCustom(CustomDataset):
         false_positive = 0
         false_negative = 0
         ious = []
+        predicted_labels = []
+        gt_labels_category = []
 
-        res = self._segm2json(results)[0]
+        res = self._segm2json(results.copy())[0]
 
         print("length of res", len(res))
+        print(res[0])
         for i in range(len(self.img_ids)):
             ann_ids = self.coco.get_ann_ids(img_ids=self.img_ids[i])
             ann_info = self.coco.load_anns(ann_ids)
@@ -434,42 +444,175 @@ class CocoDatasetCustom(CustomDataset):
                 print("NOOOOOOOOOOOOOOOO")
 
             this_pred = list(filter(lambda x: x['image_id'] == self.img_ids[i], res))
+            this_pred = list(filter(lambda x: x['score'] > 0.4, list(this_pred)))
 
             if len(this_pred) > 0:
-
                 max_score= max([i['score'] for i in this_pred])
-                this_pred = list(filter(lambda x: x['score'] > 0.4, list(this_pred)))
                 this_pred = list(filter(lambda x: x['score'] == max_score, list(this_pred)))
+                
+
+                # print("category: ", this_pred[0]['category_id'], ann_info[0]['category_id'])
+                gt_labels_category.append(ann_info[0]['category_id'])
+                predicted_labels.append(this_pred[0]['category_id'])
 
                 x1, y1, w, h = this_pred[0]['bbox']
                 centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
+                iou = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
+                ious.append(iou)
+                # print(bboxes[0], this_pred[0]['bbox'])
+                file = self.coco.load_imgs(self.img_ids[i])[0]['filename']
+                # img = cv2.imread(f"data/DDSM_2k_yolo_v5/images/{file}")
+                img = cv2.imread(f"data/{dataset}/imgs/{file}")
+
+                cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=2)
+                cv2.rectangle(img, (int(bboxes[0][0]), int(bboxes[0][1])), (int(bboxes[0][2]), int(bboxes[0][3])), color=(0,255,0), thickness=2)
                 
-                if bboxes[0] != np.zeros((0,4)):
-                    iou = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
-                    ious.append(iou)
-                    # print(bboxes[0], this_pred[0]['bbox'])
-                    file = self.coco.load_imgs(self.img_ids[i])[0]['filename']
-                    img = cv2.imread(f"data/DDSM_2k_yolo_v5/images/{file}")
+                cv2.imwrite(f"generated/{dataset}/{file}.png", img)
 
-                    cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=2)
-                    cv2.rectangle(img, (int(bboxes[0][0]), int(bboxes[0][1])), (int(bboxes[0][2]), int(bboxes[0][3])), color=(0,255,0), thickness=2)
-                    
-                    cv2.imwrite(f"generated/ddsm/{file}.png", img)
-
-                    if self.rectContains(bboxes[0], centroid):
-                        true_positive +=1
-                    else:
-                        false_positive+=1
+                if self.rectContains(bboxes[0], centroid):
+                    true_positive +=1
+                else:
+                    false_positive+=1
             else:
-                false_negative+=1
+                # false_negative+=1
+                print("NO PREDICTIONS!")
+                predicted_labels.append(0)
 
-        print("precision: ", true_positive/(true_positive+false_positive))
-        print("recall: ", true_positive/(true_positive+false_negative))
-        print("IOU: ", sum(ious)/ len(ious))
+
+        try:
+            print("precision: ", true_positive/(true_positive+false_positive))
+        except ZeroDivisionError:
+            print("ERROR WHILE PRECISION, 0 denominator")
+        
+        try:
+            print("recall: ", true_positive/(true_positive+false_negative))
+        except ZeroDivisionError:
+            print("ERROR WHILE RECALL, 0 denominator")
+        
+        try:
+            print("IOU: ", sum(ious)/ len(ious))
+        except ZeroDivisionError:
+            print("ERROR WHILE iou, 0 denominator")
+        
+        # gt_labels_category = [2 if x==1 else x for x in gt_labels_category]
+        # predicted_labels = [2 if x==1 else x for x in predicted_labels]
+
+        cm = confusion_matrix(gt_labels_category, predicted_labels)
+        print(cm)
+
+        # print("SENSITIVITY: ", cm[1,1]/(cm[1,0] +cm[1,1]))
+        # print("SPECIFICITY: ", cm[0,0]/(cm[0,0] +cm[0,1]))
         # recalls = eval_recalls(
         #     gt_bboxes, results, proposal_nums, iou_thrs, logger=logger)
         # ar = recalls.mean(axis=1)
         # return ar
+
+
+    def custom_eval_v2(self, results, proposal_nums, iou_thrs, logger=None):
+        true_positive = 0
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+        ious = []
+        predicted_labels = []
+        gt_labels_category = []
+
+        res = self._segm2json(results.copy())[0]
+
+        print("length of res", len(res))
+        for i in range(len(self.img_ids)):
+            ann_ids = self.coco.get_ann_ids(img_ids=self.img_ids[i])
+            ann_info = self.coco.load_anns(ann_ids)
+            if len(ann_info) == 0:
+                continue
+            bboxes = []
+            for ann in ann_info:
+                if ann.get('ignore', False) or ann['iscrowd']:
+                    continue
+                x1, y1, w, h = ann['bbox']
+                bboxes.append([x1, y1, x1 + w, y1 + h])
+            bboxes = np.array(bboxes, dtype=np.float32)
+            if bboxes.shape[0] == 0:
+                bboxes = np.zeros((0, 4))
+
+            this_pred = list(filter(lambda x: x['image_id'] == self.img_ids[i], res))
+            this_pred = list(filter(lambda x: x['score'] > 0.2, list(this_pred)))
+
+            if len(this_pred) > 0:
+                max_score= max([i['score'] for i in this_pred])
+                # this_pred = list(filter(lambda x: x['score'] == max_score, list(this_pred)))
+                
+                # print("category: ", this_pred[0]['category_id'], ann_info[0]['category_id'])
+
+                if dataset == "DDSM_2k_yolo_v5":                    
+                    gt_category = max(j['category_id'] for j in ann_info)
+                    pred_cat = max(j['category_id'] for j in this_pred)
+
+                if dataset == "GBCU-Shared":
+                    gt_category = max(j['category_id'] for j in ann_info)
+                    pred_cat = max(j['category_id'] for j in this_pred)
+                
+                if dataset == "GBCU-Shared":
+                    if gt_category == 1:
+                        gt_category = 0
+                    if pred_cat == 1:
+                        pred_cat = 0
+    
+                
+                print(gt_category, pred_cat)
+
+                gt_labels_category.append(gt_category)
+                predicted_labels.append(pred_cat)
+
+                x1, y1, w, h = this_pred[0]['bbox']
+                centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
+                
+                iou = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
+                ious.append(iou)
+                # print(bboxes[0], this_pred[0]['bbox'])
+                file = self.coco.load_imgs(self.img_ids[i])[0]['filename']
+                img = cv2.imread(f"data/{dataset}/imgs/{file}")
+
+                for k in range(len(this_pred)):
+                    x1, y1, w, h = this_pred[k]['bbox']
+                    # print(this_pred[k])
+                    cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=2)
+                    cv2.putText(img, "confidence: %0.3f" %(this_pred[k]['score']), (int(x1) - 20, int(y1) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
+                    cv2.putText(img, "predicted label: %d" %(this_pred[k]['category_id']), (int(x1) - 50, int(y1) - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
+                
+                for k in range(len(bboxes)):
+                    # print(bboxes[k])
+                    cv2.putText(img, "ground truth label: %d" %(gt_category), (int(bboxes[k][0]), int(bboxes[k][1]) + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
+                    cv2.rectangle(img, (int(bboxes[k][0]), int(bboxes[k][1])), (int(bboxes[k][2]), int(bboxes[k][3])), color=(0,255,0), thickness=2)
+                
+                cv2.imwrite(f"generated/{dataset}/{file}.png", img)
+
+                if self.rectContains(bboxes[0], centroid):
+                    true_positive +=1
+                else:
+                    false_positive+=1
+            else:
+                # false_negative+=1
+                print("NO PREDICTIONS! ")
+                gt_category = max(j['category_id'] for j in ann_info)
+                predicted_labels.append(0)
+                gt_labels_category.append(gt_category)
+        
+        
+        if dataset == "DDSM_2k_yolo_v5":
+            gt_labels_category = [1 if x==2 else x for x in gt_labels_category]
+            predicted_labels = [1 if x==2 else x for x in predicted_labels]
+        print(len(gt_labels_category))
+        print(len(predicted_labels))
+        cm = confusion_matrix(gt_labels_category, predicted_labels)
+        print(cm)
+        try:
+            print("SENSITIVITY: ", cm[1,1]/(cm[1,0] +cm[1,1]))
+            print("SPECIFICITY: ", cm[0,0]/(cm[0,0] +cm[0,1]))
+            print("ACCURACY: ", (cm[1,1] + cm[0,0]) / (cm[1,1] + cm[0,0] + cm[1,0] + cm[0,1]))
+
+        except Exception as e:
+            print("EXCEPTION AAYA: ", e)
 
 
     def format_results(self, results, jsonfile_prefix=None, **kwargs):
@@ -576,11 +719,16 @@ class CocoDatasetCustom(CustomDataset):
             iou_type = 'bbox' if metric == 'proposal' else metric
             if metric not in result_files:
                 raise KeyError(f'{metric} is not in results')
+            
+            try:
+                self.custom_eval_v2(
+                    results, proposal_nums, iou_thrs, logger='silent')
+            except Exception as e:
+                tb = traceback.format_exc()
+                print("seomthing went wrng", tb)
+    
             try:
                 predictions = mmcv.load(result_files[metric])
-                self.custom_eval(
-                    results, proposal_nums, iou_thrs, logger='silent')
-
                 if iou_type == 'segm':
                     # Refer to https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/coco.py#L331  # noqa
                     # When evaluating mask AP, if the results contain bbox,

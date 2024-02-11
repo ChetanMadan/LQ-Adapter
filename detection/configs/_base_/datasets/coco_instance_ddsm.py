@@ -8,7 +8,7 @@ dataset_type = 'CocoDatasetCustom'
 data_root = 'data/DDSM_2k_yolo_v5/'
 
 
-classes = ('background', 'malignant', 'benign')
+classes = ('background', 'malignant')
 
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -36,39 +36,26 @@ test_pipeline = [
              dict(type='Collect', keys=['img']),
          ])
 ]
-# data = dict(
-#     samples_per_gpu=2,
-#     workers_per_gpu=2,
-#     train=dict(type=dataset_type,
-#                ann_file=data_root + 'annotations/instances_train2017.json',
-#                img_prefix=data_root + 'train2017/',
-#                pipeline=train_pipeline),
-#     val=dict(type=dataset_type,
-#              ann_file=data_root + 'annotations/instances_val2017.json',
-#              img_prefix=data_root + 'val2017/',
-#              pipeline=test_pipeline),
-#     test=dict(type=dataset_type,
-#               ann_file=data_root + 'annotations/instances_val2017.json',
-#               img_prefix=data_root + 'val2017/',
-#               pipeline=test_pipeline))
 
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
+    batch_size=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'annotations/train.json',
-               img_prefix=data_root + 'train/images/',
+               ann_file=data_root + 'annotations/train_newest.json',
+               img_prefix=data_root + 'imgs/',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'annotations/val_new.json',
-             img_prefix=data_root + 'val/images/',
+             ann_file=data_root + 'annotations/train_newest.json',
+             img_prefix=data_root + 'imgs/',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'annotations/test_new.json',
-              img_prefix=data_root + 'test/mal/images/',
+              ann_file=data_root + 'annotations/train_newest.json',
+              img_prefix=data_root + 'imgs/',
               classes=classes,
               pipeline=test_pipeline))
 
-evaluation = dict(metric=['bbox', 'segm'])
+
+evaluation = dict(metric=['bbox'])

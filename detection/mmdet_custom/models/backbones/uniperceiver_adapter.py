@@ -26,6 +26,7 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         super().__init__(num_heads=num_heads, with_cp=with_cp, *args, **kwargs)
 
         self.num_classes = 3
+        # self.num_classes = 2
         self.cls_token = None
         self.num_block = len(self.layers)
         self.pretrain_size = (pretrain_size, pretrain_size)
@@ -96,10 +97,13 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         bs, n, dim = x.shape
 
         # Interaction
+        
+        something = c.clone()
+        
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
             x, c = layer(x, c, self.layers[indexes[0]:indexes[-1] + 1],
-                         deform_inputs1, deform_inputs2, H, W)
+                         deform_inputs1, deform_inputs2, H, W, something)
 
         # Split & Reshape
         c2 = c[:, 0:c2.size(1), :]

@@ -157,6 +157,10 @@ class InteractionBlock(nn.Module):
                  drop=0., drop_path=0., with_cffn=True, cffn_ratio=0.25, init_values=0.,
                  deform_ratio=1.0, extra_extractor=False, with_cp=False):
         super().__init__()
+        self.norm1 = nn.LayerNorm(dim)
+        
+        self.self_attn = nn.MultiheadAttention(dim, num_heads, dropout=drop)
+        
         
         self.injector = Injector(dim=dim, n_levels=3, num_heads=num_heads, init_values=init_values,
                                  n_points=n_points, norm_layer=norm_layer, deform_ratio=deform_ratio,
@@ -174,7 +178,9 @@ class InteractionBlock(nn.Module):
         else:
             self.extra_extractors = None
     
-    def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W):
+    def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W, something):
+        # somthing => Fs(p)(1)
+        
         x = self.injector(query=x, reference_points=deform_inputs1[0],
                           feat=c, spatial_shapes=deform_inputs1[1],
                           level_start_index=deform_inputs1[2])
@@ -188,7 +194,11 @@ class InteractionBlock(nn.Module):
                 c = extractor(query=c, reference_points=deform_inputs2[0],
                               feat=x, spatial_shapes=deform_inputs2[1],
                               level_start_index=deform_inputs2[2], H=H, W=W)
-        return x, c
+        
+        
+        something = self.self_attn(self.norm1(something), self.norm1(something), value = something, attn_mask=None, key_padding_mask=None)[0]
+        
+        return x , c + something
 
 
 class SpatialPriorModule(nn.Module):

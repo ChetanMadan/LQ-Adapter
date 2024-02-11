@@ -7,7 +7,6 @@ _base_ = [
     '../_base_/default_runtime.py'
 ]
 
-classes = ('background','benign', 'malignant')
 
 pretrained = 'https://github.com/czczup/ViT-Adapter/releases/download/v0.3.1/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
 # pretrained = 'pretrained/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
@@ -85,10 +84,19 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
 data = dict(train=dict(pipeline=train_pipeline))
+find_unused_parameters = True
+# optimizer = dict(
+#     _delete_=True, type='AdamW', lr=0.003, weight_decay=0.05,
+#     constructor='LayerDecayOptimizerConstructor',
+#     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
+
+
 optimizer = dict(
     _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.05,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
+    
+
 optimizer_config = dict(grad_clip=None)
 evaluation = dict(save_best='auto')
 fp16 = dict(loss_scale=dict(init_scale=512))

@@ -14,13 +14,13 @@ def convert_bbox_to_polygon(bbox):
     return([polygon])
 def main():
     # file_path = "detection/data/GBCU-Shared/test.json"
-    file_path = "detection/data/DDSM_2k_yolo_v5/annotations/train.json"
+    file_path = "detection/data/ddsm/annotations/val.json"
     f = open(file_path)
     data = json.load(f)
     for line in data["annotations"]:
         segmentation = convert_bbox_to_polygon(line["bbox"])
         line["segmentation"] = segmentation
-    with open("detection/data/DDSM_2k_yolo_v5/annotations/train.json", 'w') as f:
+    with open("detection/data/ddsm/annotations/val_new.json", 'w') as f:
         f.write(json.dumps(data))
     print('DONE')
 main()
