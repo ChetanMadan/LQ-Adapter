@@ -34,8 +34,10 @@ def deform_inputs(x):
     level_start_index = torch.cat((spatial_shapes.new_zeros(
         (1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
     reference_points = get_reference_points([(h // 16, w // 16)], x.device)
+    # reference_points = get_reference_points([(h // 4, w // 4)], x.device)
     deform_inputs1 = [reference_points, spatial_shapes, level_start_index]
     
+    # spatial_shapes = torch.as_tensor([(h // 4, w // 4)], dtype=torch.long, device=x.device)
     spatial_shapes = torch.as_tensor([(h // 16, w // 16)], dtype=torch.long, device=x.device)
     level_start_index = torch.cat((spatial_shapes.new_zeros(
         (1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
@@ -93,7 +95,11 @@ class Extractor(nn.Module):
                  norm_layer=partial(nn.LayerNorm, eps=1e-6), with_cp=False):
         super().__init__()
         self.query_norm = norm_layer(dim)
+        
+        # TODO: CHANGE HERE 
+        # self.feat_norm = norm_layer(dim)
         self.feat_norm = norm_layer(dim)
+        self.dim = dim
         self.attn = MSDeformAttn(d_model=dim, n_levels=n_levels, n_heads=num_heads,
                                  n_points=n_points, ratio=deform_ratio)
         self.with_cffn = with_cffn
@@ -104,9 +110,7 @@ class Extractor(nn.Module):
             self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
     
     def forward(self, query, reference_points, feat, spatial_shapes, level_start_index, H, W):
-        
         def _inner_forward(query, feat):
-            
             attn = self.attn(self.query_norm(query), reference_points,
                              self.feat_norm(feat), spatial_shapes,
                              level_start_index, None)
@@ -155,7 +159,7 @@ class Injector(nn.Module):
 class InteractionBlock(nn.Module):
     def __init__(self, dim, num_heads=6, n_points=4, norm_layer=partial(nn.LayerNorm, eps=1e-6),
                  drop=0., drop_path=0., with_cffn=True, cffn_ratio=0.25, init_values=0.,
-                 deform_ratio=1.0, extra_extractor=False, with_cp=False):
+                 deform_ratio=1.0, extra_extractor=False, with_cp=False, index=0):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
         
@@ -179,7 +183,7 @@ class InteractionBlock(nn.Module):
             self.extra_extractors = None
     
     def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W, something):
-        # somthing => Fs(p)(1)
+        # something => Fs(p)(1)
         
         x = self.injector(query=x, reference_points=deform_inputs1[0],
                           feat=c, spatial_shapes=deform_inputs1[1],
@@ -196,9 +200,9 @@ class InteractionBlock(nn.Module):
                               level_start_index=deform_inputs2[2], H=H, W=W)
         
         
-        something = self.self_attn(self.norm1(something), self.norm1(something), value = something, attn_mask=None, key_padding_mask=None)[0]
-        
-        return x , c + something
+        # something = self.self_attn(self.norm1(something), self.norm1(something), value = something, attn_mask=None, key_padding_mask=None)[0]
+        # return x , c + something
+        return x , c
 
 
 class SpatialPriorModule(nn.Module):
@@ -252,5 +256,10 @@ class SpatialPriorModule(nn.Module):
         c2 = c2.view(bs, dim, -1).transpose(1, 2)  # 8s
         c3 = c3.view(bs, dim, -1).transpose(1, 2)  # 16s
         c4 = c4.view(bs, dim, -1).transpose(1, 2)  # 32s
-
+        
+        # print("IM MR MESEEKS", torch.min(c2).item(), torch.max(c2).item(), torch.min(c3).item(), torch.max(c3).item(), torch.min(c4).item(), torch.max(c4).item() )
+        
+        # c3 = torch.clamp(c3, min=0.)
+        # c2 = torch.clamp(c2, min=0.)
+        # c4 = torch.clamp(c4, min=0.)
         return c1, c2, c3, c4

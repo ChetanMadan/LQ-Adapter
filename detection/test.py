@@ -175,8 +175,6 @@ def main():
     else:
         distributed = True
         init_dist(args.launcher, **cfg.dist_params)
-    print("DISTRIBUTED: ", distributed)
-    # distributed = False
     rank, _ = get_dist_info()
     # allows not to create
     if args.work_dir is not None and rank == 0:
