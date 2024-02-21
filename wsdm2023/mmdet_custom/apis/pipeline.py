@@ -69,11 +69,13 @@ class RandomParaPhrase:
         self.ratio = ratio
         with open(phrase_cache, 'r') as f:
             self.phrase_cache = json.load(f)
+        # self.phrase_cache = {}
 
     def __call__(self, results):
         if np.random.random() >= self.ratio:
             name = results['img_info']['file_name']
             cache = self.phrase_cache[name]
+            # cache = [""]
             phrase_num = len(cache)
             results['refer'] = cache[np.random.randint(
                 0, phrase_num)].replace('?', '').lower()

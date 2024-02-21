@@ -129,8 +129,8 @@ train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='LoadRefer', tag='question'),
-    dict(type='RandomParaPhrase',
-         phrase_cache='data/wsdm2023/annotations/paraphrase_train.json'),
+    # dict(type='RandomParaPhrase',
+    #      phrase_cache='data/wsdm2023/annotations/paraphrase_train.json'),
     dict(type='RandomFlipWithRefer', flip_ratio=0.5),
     dict(
         type='AutoAugment',

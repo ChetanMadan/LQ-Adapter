@@ -31,11 +31,12 @@ params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 @DATASETS.register_module()
 class CocoDatasetCustom(CustomDataset):
     if dataset == "GBCU-Shared":
-        CLASSES = ('gb',)
+        CLASSES = ('background','benign', 'malignant')
     elif dataset=="GBCU":
         CLASSES = ('gb',)
     else:
-        CLASSES = ('malignant',)
+        CLASSES = ('background','malignant')
+    filter_empty_gt = False
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142), (0, 0, 230),
                (106, 0, 228), (0, 60, 100), (0, 80, 100), (0, 0, 70),
                (0, 0, 192), (250, 170, 30), (100, 170, 30), (220, 220, 0),
@@ -80,13 +81,13 @@ class CocoDatasetCustom(CustomDataset):
         for i in self.img_ids:
             info = self.coco.load_imgs([i])[0]
             info['filename'] = info['file_name']
+            info['question'] = "question"
             data_infos.append(info)
             ann_ids = self.coco.get_ann_ids(img_ids=[i])
             total_ann_ids.extend(ann_ids)
         assert len(set(total_ann_ids)) == len(
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
         # self.valid_inds = self._filter_imgs()
-        # print(data_infos)
         return data_infos
 
     def get_ann_info(self, idx):
@@ -103,7 +104,7 @@ class CocoDatasetCustom(CustomDataset):
         ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
         ann_info = self.coco.load_anns(ann_ids)
         ann_info = self._parse_ann_info(self.data_infos[idx], ann_info)
-        # print(ann_info)
+        ann_info['question'] = self.data_infos[idx]['question']
         return ann_info
 
     def get_cat_ids(self, idx):
@@ -136,10 +137,9 @@ class CocoDatasetCustom(CustomDataset):
 
         valid_img_ids = []
         for i, img_info in enumerate(self.data_infos):
-            self.filter_empty_gt = True
             img_id = self.img_ids[i]
             if self.filter_empty_gt and img_id not in ids_in_cat:
-                print("filtering", img_id, self.filter_empty_gt)
+                print("filtering", img_id)
                 continue
             if min(img_info['width'], img_info['height']) >= min_size:
                 valid_inds.append(i)
@@ -409,7 +409,7 @@ class CocoDatasetCustom(CustomDataset):
         iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
         assert iou >= 0.0
         assert iou <= 1.0
-        return iou, intersection_area / bb2_area
+        return iou
 
     def rectContains(self, rect, pt):
         return rect[0] < pt[0] < rect[2] and rect[1] < pt[1] < rect[3]
@@ -421,7 +421,6 @@ class CocoDatasetCustom(CustomDataset):
         false_positive = 0
         false_negative = 0
         ious = []
-        intersection_regions = []
         predicted_labels = []
         gt_labels_category = []
         to_write = []
@@ -439,10 +438,7 @@ class CocoDatasetCustom(CustomDataset):
             for ann in ann_info:
                 if ann.get('ignore', False) or ann['iscrowd']:
                     continue
-                try:
-                    x1, y1, w, h = ann['bbox']
-                except:
-                    x1, y1, w, h = 0,0,0,0
+                x1, y1, w, h = ann['bbox']
                 bboxes.append([x1, y1, x1 + w, y1 + h])
             bboxes = np.array(bboxes, dtype=np.float32)
             if bboxes.shape[0] == 0:
@@ -459,6 +455,11 @@ class CocoDatasetCustom(CustomDataset):
                 gt_category = max(j['category_id'] for j in ann_info)
                 pred_cat = max(j['category_id'] for j in this_pred)
                 
+                if dataset == "GBCU-Shared":
+                    if gt_category == 1:
+                        gt_category = 0
+                    if pred_cat == 1:
+                        pred_cat = 0
 
                 gt_labels_category.append(gt_category)
                 predicted_labels.append(pred_cat)
@@ -469,14 +470,9 @@ class CocoDatasetCustom(CustomDataset):
                 x1, y1, w, h = pred_max_score[0]['bbox']
                 centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
                 
-                # print(np.unique(bboxes[0]))
-                if np.unique(bboxes[0])[0] == 0:
-                    pass
-                else:
-                    iou, intersection_region = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
-                    intersection_regions.append(intersection_region)
-                    to_write.append([int(ann_info[0]['image_id']), float(iou), float(max(scores))])
-                    ious.append(iou)
+                iou = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
+                to_write.append([int(ann_info[0]['image_id']), float(iou), float(max(scores))])
+                ious.append(iou)
                 # print(bboxes[0], this_pred[0]['bbox'])
                 file = self.coco.load_imgs(self.img_ids[i])[0]['filename']
                 img = cv2.imread(f"data/{dataset}/imgs/{file}")
@@ -519,10 +515,6 @@ class CocoDatasetCustom(CustomDataset):
         except ZeroDivisionError:
             print("ERROR WHILE iou, 0 denominator")
         try:
-            print("INTERSECTION REGIONS: ", sum(intersection_regions)/ len(intersection_regions))
-        except ZeroDivisionError:
-            print("ERROR WHILE iou, 0 denominator")
-        try:
             print("precision: ", true_positive/(true_positive+false_positive))
         except ZeroDivisionError:
             print("ERROR WHILE PRECISION, 0 denominator")
@@ -539,9 +531,9 @@ class CocoDatasetCustom(CustomDataset):
 
         except Exception as e:
             print("EXCEPTION AAYA: ", e)
-        # print(to_write)
+        print(to_write)
         a = np.asarray(to_write)
-        # np.savetxt("foo.csv", a, delimiter=",")
+        np.savetxt("foo.csv", a, delimiter=",")
 
     def format_results(self, results, jsonfile_prefix=None, **kwargs):
         """Format the results to json (standard format for COCO evaluation).

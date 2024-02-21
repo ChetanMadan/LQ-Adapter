@@ -257,7 +257,6 @@ class SpatialPriorModule(nn.Module):
         c3 = c3.view(bs, dim, -1).transpose(1, 2)  # 16s
         c4 = c4.view(bs, dim, -1).transpose(1, 2)  # 32s
         
-        # print("IM MR MESEEKS", torch.min(c2).item(), torch.max(c2).item(), torch.min(c3).item(), torch.max(c3).item(), torch.min(c4).item(), torch.max(c4).item() )
         
         # c3 = torch.clamp(c3, min=0.)
         # c2 = torch.clamp(c2, min=0.)

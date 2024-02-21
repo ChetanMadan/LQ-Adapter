@@ -6,6 +6,7 @@
 
 dataset_type = 'CocoDatasetCustom'
 data_root = 'data/GBCU/'
+# data_root = 'data/GBCU-Shared/'
 
 
 classes = ('gb',)

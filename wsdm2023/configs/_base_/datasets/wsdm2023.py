@@ -1,7 +1,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 # dataset settings
-dataset_type = 'WSDMCocoDataset'
-data_root = 'data/wsdm2023/'
+# dataset_type = 'WSDMCocoDataset'
+dataset_type = 'CocoDatasetCustom'
+# data_root = 'data/wsdm2023/'
+data_root = '../detection/data/GBCU/'
+
+classes = ('gb',)
+
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -39,19 +44,19 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'annotations/train.json',
-               img_prefix=data_root + 'train',
+               ann_file=data_root + 'new_splits/gb_train_4.json',
+               img_prefix=data_root + 'imgs/',
+               classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'annotations/val.json',
-             img_prefix=data_root + 'train',
+             ann_file=data_root + 'new_splits/gb_test_4.json',
+             img_prefix=data_root + 'imgs/',
+             classes=classes,
              pipeline=test_pipeline),
-    # test=dict(type=dataset_type,
-    #           ann_file=data_root + 'annotations/test_public.json',
-    #           img_prefix=data_root + 'test_public',
-    #           pipeline=test_pipeline))
     test=dict(type=dataset_type,
-             ann_file=data_root + 'annotations/val.json',
-             img_prefix=data_root + 'train',
-             pipeline=test_pipeline))
-evaluation = dict(interval=1, metric=['bbox', 'IoU'])
+              ann_file=data_root + 'new_splits/gb_test_4.json',
+              img_prefix=data_root + 'imgs/',
+              classes=classes,
+              pipeline=test_pipeline))
+
+evaluation = dict(metric=['bbox'])
