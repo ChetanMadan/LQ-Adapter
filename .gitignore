@@ -139,3 +139,5 @@ work_dirs_working/
 .neptune/
 work_dirs_back_vs_gb/
 work_dirs_ddsm/
+work_dirs_mask_intervention_fold_4
+work_dirs_intervention_fold_4

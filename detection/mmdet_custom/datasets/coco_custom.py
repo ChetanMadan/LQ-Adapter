@@ -393,7 +393,7 @@ class CocoDatasetCustom(CustomDataset):
         y_bottom = min(bb1[3], bb2[3])
 
         if x_right < x_left or y_bottom < y_top:
-            return 0.0
+            return 0.0, 0
 
         # The intersection of two axis-aligned bounding boxes is always an
         # axis-aligned bounding box

@@ -44,7 +44,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
-    # dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
              [
@@ -76,7 +76,8 @@ train_pipeline = [
          ]),
     dict(type='RandomCrop',
          crop_type='absolute_range',
-         crop_size=(1024, 1024),
+        #  crop_size=(1024, 1024),
+         crop_size=(850, 850),
          allow_negative_crop=True),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -93,7 +94,7 @@ find_unused_parameters = True
 
 
 optimizer = dict(
-    _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.05,
+    _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
     

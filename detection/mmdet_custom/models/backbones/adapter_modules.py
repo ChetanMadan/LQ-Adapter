@@ -95,13 +95,14 @@ class Extractor(nn.Module):
                  norm_layer=partial(nn.LayerNorm, eps=1e-6), with_cp=False):
         super().__init__()
         self.query_norm = norm_layer(dim)
-        
-        # TODO: CHANGE HERE 
-        # self.feat_norm = norm_layer(dim)
         self.feat_norm = norm_layer(dim)
-        self.dim = dim
         self.attn = MSDeformAttn(d_model=dim, n_levels=n_levels, n_heads=num_heads,
                                  n_points=n_points, ratio=deform_ratio)
+        self.attn_2 = MSDeformAttn(d_model=dim, n_levels=n_levels, n_heads=num_heads,
+                                 n_points=n_points, ratio=deform_ratio)
+        
+        self.self_attn = nn.MultiheadAttention(dim, 4)
+        # self.self_attn = FocalAttention(dim, focal_level=3)
         self.with_cffn = with_cffn
         self.with_cp = with_cp
         if with_cffn:
@@ -109,23 +110,43 @@ class Extractor(nn.Module):
             self.ffn_norm = norm_layer(dim)
             self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
     
-    def forward(self, query, reference_points, feat, spatial_shapes, level_start_index, H, W):
-        def _inner_forward(query, feat):
+    def forward(self, query, reference_points, feat, spatial_shapes, level_start_index, H, W, something,sizes=None):
+        
+ 
+        def _inner_forward(query, feat,something):
+            
+            # print("inside extractor, ", query.shape , feat.shape, something.shape)
             attn = self.attn(self.query_norm(query), reference_points,
                              self.feat_norm(feat), spatial_shapes,
                              level_start_index, None)
             query = query + attn
             
+            #other option is to add to existing something
+                
             if self.with_cffn:
                 query = query + self.drop_path(self.ffn(self.ffn_norm(query), H, W))
-            return query
+ 
+            # print("inside extractor, after c update ", query.shape , feat.shape, something.shape)
+            if something is not None:
+                # some_v2 , _= self.self_attn(something,
+                #              query,query,
+                #              )
+                some_v2 = self.attn_2(self.query_norm(something), reference_points,
+                             self.feat_norm(feat), spatial_shapes,
+                             level_start_index, None)
+                some_v2, _= self.self_attn(
+                    some_v2, self.query_norm(query), self.query_norm(query)
+                )
+                # print("something updated", something.shape)
+                something = something + some_v2
+            return query, something
         
         if self.with_cp and query.requires_grad:
-            query = cp.checkpoint(_inner_forward, query, feat)
+            query = cp.checkpoint(_inner_forward, query, feat,something)
         else:
-            query = _inner_forward(query, feat)
+            query, something = _inner_forward(query, feat,something)
         
-        return query
+        return query, something
 
 
 class Injector(nn.Module):
@@ -182,7 +203,7 @@ class InteractionBlock(nn.Module):
         else:
             self.extra_extractors = None
     
-    def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W, something):
+    def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W, something, sizes=None):
         # something => Fs(p)(1)
         
         x = self.injector(query=x, reference_points=deform_inputs1[0],
@@ -190,19 +211,19 @@ class InteractionBlock(nn.Module):
                           level_start_index=deform_inputs1[2])
         for idx, blk in enumerate(blocks):
             x = blk(x, H, W)
-        c = self.extractor(query=c, reference_points=deform_inputs2[0],
+        c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
                            feat=x, spatial_shapes=deform_inputs2[1],
-                           level_start_index=deform_inputs2[2], H=H, W=W)
+                           level_start_index=deform_inputs2[2], H=H, W=W, something=something, sizes=sizes)
         if self.extra_extractors is not None:
             for extractor in self.extra_extractors:
-                c = extractor(query=c, reference_points=deform_inputs2[0],
+                c, something = extractor(query=c, reference_points=deform_inputs2[0],
                               feat=x, spatial_shapes=deform_inputs2[1],
-                              level_start_index=deform_inputs2[2], H=H, W=W)
+                              level_start_index=deform_inputs2[2], H=H, W=W, something=something, sizes=sizes)
         
         
         # something = self.self_attn(self.norm1(something), self.norm1(something), value = something, attn_mask=None, key_padding_mask=None)[0]
         # return x , c + something
-        return x , c
+        return x , c, something
 
 
 class SpatialPriorModule(nn.Module):
