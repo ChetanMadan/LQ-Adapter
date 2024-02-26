@@ -5,10 +5,10 @@
 # data_root = 'data/coco/'
 
 dataset_type = 'CocoDatasetCustom'
-data_root = 'data/DDSM_2k_yolo_v5/'
+data_root = 'data/ddsm_updated/'
 
 
-classes = ('malignant',)
+classes = ('mal',)
 
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -42,18 +42,18 @@ data = dict(
     workers_per_gpu=2,
     batch_size=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'annotations/train.json_final.json',
-               img_prefix=data_root + 'imgs/',
+               ann_file=data_root + 'annotations/instances_train2017.json',
+               img_prefix=data_root + 'images/',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'annotations/test.json_final.json',
-             img_prefix=data_root + 'imgs/',
+             ann_file=data_root + 'annotations/instances_val2017.json',
+             img_prefix=data_root + 'images',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'annotations/test.json_final.json',
-              img_prefix=data_root + 'imgs/',
+              ann_file=data_root + 'annotations/image_info_test-dev2017.json',
+              img_prefix=data_root + 'images',
               classes=classes,
               pipeline=test_pipeline))
 

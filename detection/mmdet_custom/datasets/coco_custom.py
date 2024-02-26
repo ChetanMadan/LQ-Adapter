@@ -22,7 +22,7 @@ from sklearn.metrics import confusion_matrix
 # dataset = "GBCU-Shared"
 dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
-# dataset = "ddsm"
+# dataset = "ddsm_updated"
 
 FOLD_NUMBER = 4
 
@@ -34,6 +34,8 @@ class CocoDatasetCustom(CustomDataset):
         CLASSES = ('gb',)
     elif dataset=="GBCU":
         CLASSES = ('gb',)
+    elif dataset=="ddsm_updated":
+        CLASSES = ('mal',)
     else:
         CLASSES = ('malignant',)
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142), (0, 0, 230),
@@ -136,7 +138,7 @@ class CocoDatasetCustom(CustomDataset):
 
         valid_img_ids = []
         for i, img_info in enumerate(self.data_infos):
-            self.filter_empty_gt = True
+            self.filter_empty_gt = False
             img_id = self.img_ids[i]
             if self.filter_empty_gt and img_id not in ids_in_cat:
                 print("filtering", img_id, self.filter_empty_gt)

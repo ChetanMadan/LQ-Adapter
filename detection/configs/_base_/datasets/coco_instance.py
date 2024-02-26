@@ -57,4 +57,24 @@ data = dict(
               classes=classes,
               pipeline=test_pipeline))
 
+
+# data = dict(
+#     samples_per_gpu=2,
+#     workers_per_gpu=2,
+#     train=dict(type=dataset_type,
+#                ann_file=data_root + 'latest_train.json',
+#                img_prefix=data_root + 'imgs/',
+#                classes=classes,
+#                pipeline=train_pipeline),
+#     val=dict(type=dataset_type,
+#              ann_file=data_root + 'latest_test.json',
+#              img_prefix=data_root + 'imgs/',
+#              classes=classes,
+#              pipeline=test_pipeline),
+#     test=dict(type=dataset_type,
+#               ann_file=data_root + 'latest_test.json',
+#               img_prefix=data_root + 'imgs/',
+#               classes=classes,
+#               pipeline=test_pipeline))
+
 evaluation = dict(metric=['bbox'])
