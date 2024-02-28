@@ -182,9 +182,9 @@ class InteractionBlock(nn.Module):
                  drop=0., drop_path=0., with_cffn=True, cffn_ratio=0.25, init_values=0.,
                  deform_ratio=1.0, extra_extractor=False, with_cp=False, index=0):
         super().__init__()
-        self.norm1 = nn.LayerNorm(dim)
+        # self.norm1 = nn.LayerNorm(dim)
         
-        self.self_attn = nn.MultiheadAttention(dim, num_heads, dropout=drop)
+        # self.self_attn = nn.MultiheadAttention(dim, num_heads, dropout=drop)
         
         
         self.injector = Injector(dim=dim, n_levels=3, num_heads=num_heads, init_values=init_values,

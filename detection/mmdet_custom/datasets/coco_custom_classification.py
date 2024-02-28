@@ -5,6 +5,7 @@ import logging
 import os.path as osp
 import tempfile
 import warnings
+import torch
 from collections import OrderedDict
 import traceback
 import mmcv
@@ -19,6 +20,7 @@ from mmdet.datasets.custom import CustomDataset
 import cv2
 from sklearn.metrics import confusion_matrix
 import json
+import traceback
 
 # dataset = "GBCU-Shared"
 dataset = "GBCU"
@@ -29,8 +31,24 @@ FOLD_NUMBER = 4
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 
+def file_to_annotations(ann_file):
+        content = {}
+        with open(ann_file, 'r') as infile:
+            for line in infile:
+                c = line.strip().split(",")
+                if c[1] == '1':
+                    c[1] = 0
+                elif c[1] == '2':
+                    c[1] = 1
+                else:
+                    assert c[1] == '0'
+                content.update({c[0]: int(c[1])})
+        return content
+    
 @DATASETS.register_module()
-class CocoDatasetCustom(CustomDataset):
+class CocoDatasetCustomClassification(CustomDataset):
+    ann_file = "/home/chetan_m/share-gbcu-internal/5-fold/splits/merged_0"
+    class_anns = file_to_annotations(ann_file)
     if dataset == "GBCU-Shared":
         CLASSES = ('gb',)
     elif dataset=="GBCU":
@@ -62,6 +80,7 @@ class CocoDatasetCustom(CustomDataset):
                (95, 54, 80), (128, 76, 255), (201, 57, 1), (246, 0, 122),
                (191, 162, 208)]
 
+    
     def load_annotations(self, ann_file):
         """Load annotation from COCO style annotation file.
 
@@ -106,7 +125,7 @@ class CocoDatasetCustom(CustomDataset):
         ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
         ann_info = self.coco.load_anns(ann_ids)
         ann_info = self._parse_ann_info(self.data_infos[idx], ann_info)
-        # print(ann_info)
+        
         return ann_info
 
     def get_cat_ids(self, idx):
@@ -260,7 +279,24 @@ class CocoDatasetCustom(CustomDataset):
                     data['category_id'] = self.cat_ids[label]
                     json_results.append(data)
         return json_results
-
+    
+    def _classification2json(self, results):
+        """Convert detection results to COCO json style."""
+        json_results = []
+        for idx in range(len(self)):
+            img_id = self.img_ids[idx]
+            result = results[idx]
+            # print("RESULT", result, img_id, idx)
+            # for label in range(len(result)):
+                # bboxes = result[label]
+                # for i in range(bboxes.shape[0]):
+            data = dict()
+            data['image_id'] = img_id
+            data['category_id'] = round(result.item())
+            data['loss'] = result.item()
+            json_results.append(data)
+        return json_results
+    
     def _segm2json(self, results):
         """Convert instance segmentation results to COCO json style."""
         bbox_json_results = []
@@ -337,6 +373,10 @@ class CocoDatasetCustom(CustomDataset):
             json_results = self._proposal2json(results)
             result_files['proposal'] = f'{outfile_prefix}.proposal.json'
             mmcv.dump(json_results, result_files['proposal'])
+        elif isinstance(results[0], torch.Tensor):
+            json_results = self._classification2json(results)
+            result_files['classif'] = f'{outfile_prefix}.proposal.json'
+            mmcv.dump(json_results, result_files['classif'])
         else:
             raise TypeError('invalid type of results')
         return result_files
@@ -363,59 +403,6 @@ class CocoDatasetCustom(CustomDataset):
             gt_bboxes, results, proposal_nums, iou_thrs, logger=logger)
         ar = recalls.mean(axis=1)
         return ar
-    
-    def get_iou(self, bb1, bb2):
-        """
-        Calculate the Intersection over Union (IoU) of two bounding boxes.
-
-        Parameters
-        ----------
-        bb1 : dict
-            Keys: {'x1', 'x2', 'y1', 'y2'}
-            The (x1, y1) position is at the top left corner,
-            the (x2, y2) position is at the bottom right corner
-        bb2 : dict
-            Keys: {'x1', 'x2', 'y1', 'y2'}
-            The (x, y) position is at the top left corner,
-            the (x2, y2) position is at the bottom right corner
-
-        Returns
-        -------
-        float
-            in [0, 1]
-        """
-        assert bb1[0] < bb1[2], (bb1, bb2)
-        assert bb1[1] < bb1[3], (bb1, bb2)
-        assert bb2[0] < bb2[2], (bb1, bb2)
-        assert bb2[1] < bb2[3], (bb1, bb2)
-
-        # determine the coordinates of the intersection rectangle
-        x_left = max(bb1[0], bb2[0])
-        y_top = max(bb1[1], bb2[1])
-        x_right = min(bb1[2], bb2[2])
-        y_bottom = min(bb1[3], bb2[3])
-
-        if x_right < x_left or y_bottom < y_top:
-            return 0.0, 0
-
-        # The intersection of two axis-aligned bounding boxes is always an
-        # axis-aligned bounding box
-        intersection_area = (x_right - x_left) * (y_bottom - y_top)
-
-        # compute the area of both AABBs
-        bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
-        bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
-
-        # compute the intersection over union by taking the intersection
-        # area and dividing it by the sum of prediction + ground-truth
-        # areas - the interesection area
-        iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-        assert iou >= 0.0
-        assert iou <= 1.0
-        return iou, intersection_area / bb2_area
-
-    def rectContains(self, rect, pt):
-        return rect[0] < pt[0] < rect[2] and rect[1] < pt[1] < rect[3]
 
 
     def get_json_element(self, img_name, ann_info):
@@ -481,7 +468,7 @@ class CocoDatasetCustom(CustomDataset):
                 gt_labels_category.append(gt_category)
                 predicted_labels.append(pred_cat)
                 
-                # to_write_json.append(self.get_json_element(file, this_pred))
+                to_write_json.append(self.get_json_element(file, this_pred))
                 scores = [i['score'] for i in this_pred]
                 pred_max_score = list(filter(lambda x: x['score'] == max(scores), this_pred))
                 x1, y1, w, h = pred_max_score[0]['bbox']
@@ -628,8 +615,9 @@ class CocoDatasetCustom(CustomDataset):
             dict[str, float]: COCO style evaluation metric.
         """
 
-        metrics = metric if isinstance(metric, list) else [metric]
-        allowed_metrics = ['bbox', 'segm', 'proposal', 'proposal_fast']
+        # metrics = metric if isinstance(metric, list) else [metric]
+        metrics = ['classif']
+        allowed_metrics = ['bbox', 'segm', 'proposal', 'proposal_fast', 'classif']
         for metric in metrics:
             if metric not in allowed_metrics:
                 raise KeyError(f'metric {metric} is not supported')
@@ -639,171 +627,161 @@ class CocoDatasetCustom(CustomDataset):
         if metric_items is not None:
             if not isinstance(metric_items, list):
                 metric_items = [metric_items]
-
+        # print("YE RAHE RESULTS", results)
         result_files, tmp_dir = self.format_results(results, jsonfile_prefix)
 
         eval_results = OrderedDict()
         cocoGt = self.coco
         print("metrics: ", metrics)
-        for metric in metrics:
-            msg = f'Evaluating {metric}...'
-            if logger is None:
-                msg = '\n' + msg
-            print_log(msg, logger=logger)
-
-            if metric == 'proposal_fast':
-                ar = self.fast_eval_recall(
-                    results, proposal_nums, iou_thrs, logger='silent')
-                log_msg = []
-                for i, num in enumerate(proposal_nums):
-                    eval_results[f'AR@{num}'] = ar[i]
-                    log_msg.append(f'\nAR@{num}\t{ar[i]:.4f}')
-                log_msg = ''.join(log_msg)
-                print_log(log_msg, logger=logger)
-                continue
-
-            iou_type = 'bbox' if metric == 'proposal' else metric
-            if metric not in result_files:
-                raise KeyError(f'{metric} is not in results')
-            
-            try:
-                self.custom_eval_v2(
-                    results, proposal_nums, iou_thrs, logger='silent')
-            except Exception as e:
-                tb = traceback.format_exc()
-                print("seomthing went wrng", tb)
-    
-            try:
-                predictions = mmcv.load(result_files[metric])
-                if iou_type == 'segm':
-                    # Refer to https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/coco.py#L331  # noqa
-                    # When evaluating mask AP, if the results contain bbox,
-                    # cocoapi will use the box area instead of the mask area
-                    # for calculating the instance area. Though the overall AP
-                    # is not affected, this leads to different
-                    # small/medium/large mask AP results.
-                    for x in predictions:
-                        x.pop('bbox')
-                    warnings.simplefilter('once')
-                    warnings.warn(
-                        'The key "bbox" is deleted for more accurate mask AP '
-                        'of small/medium/large instances since v2.12.0. This '
-                        'does not change the overall mAP calculation.',
-                        UserWarning)
-                cocoDt = cocoGt.loadRes(predictions)
-            except IndexError:
-                print_log(
-                    'The testing results of the whole dataset is empty.',
-                    logger=logger,
-                    level=logging.ERROR)
-                break
-
-            cocoEval = COCOeval(cocoGt, cocoDt, iou_type)
-            cocoEval.params.catIds = self.cat_ids
-            cocoEval.params.imgIds = self.img_ids
-            cocoEval.params.maxDets = list(proposal_nums)
-            cocoEval.params.iouThrs = iou_thrs
-            # mapping of cocoEval.stats
-            coco_metric_names = {
-                'mAP': 0,
-                'mAP_50': 1,
-                'mAP_75': 2,
-                'mAP_s': 3,
-                'mAP_m': 4,
-                'mAP_l': 5,
-                'AR@100': 6,
-                'AR@300': 7,
-                'AR@1000': 8,
-                'AR_s@1000': 9,
-                'AR_m@1000': 10,
-                'AR_l@1000': 11
+        try:
+            tp = 0
+            fp = 0
+            tn = 0
+            fn = 0
+            predictions = mmcv.load(result_files[metric])
+            for pred in predictions:
+                file = self.coco.load_imgs(pred['image_id'])[0]['filename']
+                gt_class = self.class_anns[file]
+                print(pred['category_id'], gt_class)
+                if pred['category_id'] == 1 and gt_class == 1:
+                    tp+=1
+                elif pred['category_id'] == 1 and gt_class == 0:
+                    fp +=1
+                elif pred['category_id'] == 0 and gt_class == 1:
+                    fn+=1
+                elif pred['category_id'] == 0 and gt_class == 0:
+                    tn+=1
+            accuracy = (tp+tn)/(tp+fp+fn+tn)
+            return {
+                "ACCURACY": accuracy,
+                "SENSITIVITY": tp/(tp+fn),
+                "SPECIFICITY": tn/(tn+fp)
             }
-            if metric_items is not None:
-                for metric_item in metric_items:
-                    if metric_item not in coco_metric_names:
-                        raise KeyError(
-                            f'metric item {metric_item} is not supported')
+            # print(predictions)
+        except Exception as e:
+            print("seomthing went wring", e, traceback.format_exc())
+        #         if iou_type == 'segm':
+        #             # Refer to https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/coco.py#L331  # noqa
+        #             # When evaluating mask AP, if the results contain bbox,
+        #             # cocoapi will use the box area instead of the mask area
+        #             # for calculating the instance area. Though the overall AP
+        #             # is not affected, this leads to different
+        #             # small/medium/large mask AP results.
+        #             for x in predictions:
+        #                 x.pop('bbox')
+        #             warnings.simplefilter('once')
+        #             warnings.warn(
+        #                 'The key "bbox" is deleted for more accurate mask AP '
+        #                 'of small/medium/large instances since v2.12.0. This '
+        #                 'does not change the overall mAP calculation.',
+        #                 UserWarning)
+        #         cocoDt = cocoGt.loadRes(predictions)
+        #     except IndexError:
+        #         print_log(
+        #             'The testing results of the whole dataset is empty.',
+        #             logger=logger,
+        #             level=logging.ERROR)
+        #         break
 
-            if metric == 'proposal':
-                cocoEval.params.useCats = 0
-                cocoEval.evaluate()
-                cocoEval.accumulate()
+        #     cocoEval = COCOeval(cocoGt, cocoDt, iou_type)
+        #     cocoEval.params.catIds = self.cat_ids
+        #     cocoEval.params.imgIds = self.img_ids
+        #     cocoEval.params.maxDets = list(proposal_nums)
+        #     cocoEval.params.iouThrs = iou_thrs
+        #     # mapping of cocoEval.stats
+        #     coco_metric_names = {
+        #         'mAP': 0,
+        #         'mAP_50': 1,
+        #         'mAP_75': 2,
+        #         'mAP_s': 3,
+        #         'mAP_m': 4,
+        #         'mAP_l': 5,
+        #         'AR@100': 6,
+        #         'AR@300': 7,
+        #         'AR@1000': 8,
+        #         'AR_s@1000': 9,
+        #         'AR_m@1000': 10,
+        #         'AR_l@1000': 11
+        #     }
+        #     if metric == 'proposal':
+        #         cocoEval.params.useCats = 0
+        #         cocoEval.evaluate()
+        #         cocoEval.accumulate()
 
-                # Save coco summarize print information to logger
-                redirect_string = io.StringIO()
-                with contextlib.redirect_stdout(redirect_string):
-                    cocoEval.summarize()
-                print_log('\n' + redirect_string.getvalue(), logger=logger)
+        #         # Save coco summarize print information to logger
+        #         redirect_string = io.StringIO()
+        #         with contextlib.redirect_stdout(redirect_string):
+        #             cocoEval.summarize()
+        #         print_log('\n' + redirect_string.getvalue(), logger=logger)
 
-                if metric_items is None:
-                    metric_items = [
-                        'AR@100', 'AR@300', 'AR@1000', 'AR_s@1000',
-                        'AR_m@1000', 'AR_l@1000'
-                    ]
+        #         if metric_items is None:
+        #             metric_items = [
+        #                 'AR@100', 'AR@300', 'AR@1000', 'AR_s@1000',
+        #                 'AR_m@1000', 'AR_l@1000'
+        #             ]
 
-                for item in metric_items:
-                    val = float(
-                        f'{cocoEval.stats[coco_metric_names[item]]:.3f}')
-                    eval_results[item] = val
-            else:
-                cocoEval.evaluate()
-                cocoEval.accumulate()
+        #         for item in metric_items:
+        #             val = float(
+        #                 f'{cocoEval.stats[coco_metric_names[item]]:.3f}')
+        #             eval_results[item] = val
+        #     else:
+        #         cocoEval.evaluate()
+        #         cocoEval.accumulate()
 
-                # Save coco summarize print information to logger
-                redirect_string = io.StringIO()
-                with contextlib.redirect_stdout(redirect_string):
-                    cocoEval.summarize()
-                print_log('\n' + redirect_string.getvalue(), logger=logger)
+        #         # Save coco summarize print information to logger
+        #         redirect_string = io.StringIO()
+        #         with contextlib.redirect_stdout(redirect_string):
+        #             cocoEval.summarize()
+        #         print_log('\n' + redirect_string.getvalue(), logger=logger)
 
-                if classwise:  # Compute per-category AP
-                    # Compute per-category AP
-                    # from https://github.com/facebookresearch/detectron2/
-                    precisions = cocoEval.eval['precision']
-                    # precision: (iou, recall, cls, area range, max dets)
-                    assert len(self.cat_ids) == precisions.shape[2]
+        #         if classwise:  # Compute per-category AP
+        #             # Compute per-category AP
+        #             # from https://github.com/facebookresearch/detectron2/
+        #             precisions = cocoEval.eval['precision']
+        #             # precision: (iou, recall, cls, area range, max dets)
+        #             assert len(self.cat_ids) == precisions.shape[2]
 
-                    results_per_category = []
-                    for idx, catId in enumerate(self.cat_ids):
-                        # area range index 0: all area ranges
-                        # max dets index -1: typically 100 per image
-                        nm = self.coco.loadCats(catId)[0]
-                        precision = precisions[:, :, idx, 0, -1]
-                        precision = precision[precision > -1]
-                        if precision.size:
-                            ap = np.mean(precision)
-                        else:
-                            ap = float('nan')
-                        results_per_category.append(
-                            (f'{nm["name"]}', f'{float(ap):0.3f}'))
+        #             results_per_category = []
+        #             for idx, catId in enumerate(self.cat_ids):
+        #                 # area range index 0: all area ranges
+        #                 # max dets index -1: typically 100 per image
+        #                 nm = self.coco.loadCats(catId)[0]
+        #                 precision = precisions[:, :, idx, 0, -1]
+        #                 precision = precision[precision > -1]
+        #                 if precision.size:
+        #                     ap = np.mean(precision)
+        #                 else:
+        #                     ap = float('nan')
+        #                 results_per_category.append(
+        #                     (f'{nm["name"]}', f'{float(ap):0.3f}'))
 
-                    num_columns = min(6, len(results_per_category) * 2)
-                    results_flatten = list(
-                        itertools.chain(*results_per_category))
-                    headers = ['category', 'AP'] * (num_columns // 2)
-                    results_2d = itertools.zip_longest(*[
-                        results_flatten[i::num_columns]
-                        for i in range(num_columns)
-                    ])
-                    table_data = [headers]
-                    table_data += [result for result in results_2d]
-                    table = AsciiTable(table_data)
-                    print_log('\n' + table.table, logger=logger)
+        #             num_columns = min(6, len(results_per_category) * 2)
+        #             results_flatten = list(
+        #                 itertools.chain(*results_per_category))
+        #             headers = ['category', 'AP'] * (num_columns // 2)
+        #             results_2d = itertools.zip_longest(*[
+        #                 results_flatten[i::num_columns]
+        #                 for i in range(num_columns)
+        #             ])
+        #             table_data = [headers]
+        #             table_data += [result for result in results_2d]
+        #             table = AsciiTable(table_data)
+        #             print_log('\n' + table.table, logger=logger)
 
-                if metric_items is None:
-                    metric_items = [
-                        'mAP', 'mAP_50', 'mAP_75', 'mAP_s', 'mAP_m', 'mAP_l'
-                    ]
+        #         if metric_items is None:
+        #             metric_items = [
+        #                 'mAP', 'mAP_50', 'mAP_75', 'mAP_s', 'mAP_m', 'mAP_l'
+        #             ]
 
-                for metric_item in metric_items:
-                    key = f'{metric}_{metric_item}'
-                    val = float(
-                        f'{cocoEval.stats[coco_metric_names[metric_item]]:.3f}'
-                    )
-                    eval_results[key] = val
-                ap = cocoEval.stats[:6]
-                eval_results[f'{metric}_mAP_copypaste'] = (
-                    f'{ap[0]:.3f} {ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} '
-                    f'{ap[4]:.3f} {ap[5]:.3f}')
-        if tmp_dir is not None:
-            tmp_dir.cleanup()
-        return eval_results
+        #         for metric_item in metric_items:
+        #             key = f'{metric}_{metric_item}'
+        #             val = float(
+        #                 f'{cocoEval.stats[coco_metric_names[metric_item]]:.3f}'
+        #             )
+        #             eval_results[key] = val
+        #         ap = cocoEval.stats[:6]
+        #         eval_results[f'{metric}_mAP_copypaste'] = (
+        #             f'{ap[0]:.3f} {ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} '
+        #             f'{ap[4]:.3f} {ap[5]:.3f}')
+        # if tmp_dir is not None:
+        #     tmp_dir.cleanup()

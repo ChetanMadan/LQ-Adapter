@@ -4,7 +4,7 @@
 # dataset_type = 'CocoDataset'
 # data_root = 'data/coco/'
 
-dataset_type = 'CocoDatasetCustom'
+dataset_type = 'CocoDatasetCustomClassification'
 data_root = 'data/GBCU/'
 # data_root = 'data/GBCU-Shared/'
 

@@ -49,9 +49,9 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
 
         self.up = nn.ConvTranspose2d(embed_dim, embed_dim, 2, 2)
         self.norm1 = nn.SyncBatchNorm(embed_dim)
-        self.norm2 = nn.SyncBatchNorm(embed_dim)
-        self.norm3 = nn.SyncBatchNorm(embed_dim)
-        self.norm4 = nn.SyncBatchNorm(embed_dim)
+        # self.norm2 = nn.SyncBatchNorm(embed_dim)
+        # self.norm3 = nn.SyncBatchNorm(embed_dim)
+        # self.norm4 = nn.SyncBatchNorm(embed_dim)
 
         self.up.apply(self._init_weights)
         self.spm.apply(self._init_weights)
@@ -85,6 +85,14 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         return c2, c3, c4
 
     def forward(self, x):
+        # print("INSIDEEEEEEEE, ", x.shape)
+        # print(x.keys())
+        # file_name = s['name'][0]['filename'].split("/")[-1].split(".")[0]
+        # x = s['imgTensor']
+        # print(file_name, x)
+        
+        # print(len(x))
+        # print(x[0].shape)
         deform_inputs1, deform_inputs2 = deform_inputs(x)
 
         # SPM forward
@@ -108,26 +116,26 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         # Split & Reshape
         c = something
         c2 = c[:, 0:c2.size(1), :]
-        c3 = c[:, c2.size(1):c2.size(1) + c3.size(1), :]
-        c4 = c[:, c2.size(1) + c3.size(1):, :]
+        # c3 = c[:, c2.size(1):c2.size(1) + c3.size(1), :]
+        # c4 = c[:, c2.size(1) + c3.size(1):, :]
 
         c2 = c2.transpose(1, 2).view(bs, dim, H * 2, W * 2).contiguous()
-        c3 = c3.transpose(1, 2).view(bs, dim, H, W).contiguous()
-        c4 = c4.transpose(1, 2).view(bs, dim, H // 2, W // 2).contiguous()
+        # c3 = c3.transpose(1, 2).view(bs, dim, H, W).contiguous()
+        # c4 = c4.transpose(1, 2).view(bs, dim, H // 2, W // 2).contiguous()
         c1 = self.up(c2) + c1
 
         if self.add_vit_feature:
             x3 = x.transpose(1, 2).view(bs, dim, H, W).contiguous()
             x1 = F.interpolate(x3, scale_factor=4, mode='bilinear', align_corners=False)
-            x2 = F.interpolate(x3, scale_factor=2, mode='bilinear', align_corners=False)
-            x4 = F.interpolate(x3, scale_factor=0.5, mode='bilinear', align_corners=False)
-            c1, c2, c3, c4 = c1 + x1, c2 + x2, c3 + x3, c4 + x4
+            # x2 = F.interpolate(x3, scale_factor=2, mode='bilinear', align_corners=False)
+            # x4 = F.interpolate(x3, scale_factor=0.5, mode='bilinear', align_corners=False)
+            # c1, c2, c3, c4 = c1 + x1, c2 + x2, c3 + x3, c4 + x4
+            c1 = c1+x1
 
         # Final Norm
         f1 = self.norm1(c1)
-        f2 = self.norm2(c2)
-        f3 = self.norm3(c3)
-        f4 = self.norm4(c4)
-        
-        # print("THIS IS INSIDE UPA: ", f1.shape, f2.shape, f3.shape, f4.shape)
-        return [f1, f2, f3, f4]
+        # f2 = self.norm2(c2)
+        # f3 = self.norm3(c3)
+        # f4 = self.norm4(c4)
+        # return [f1, f2, f3, f4]
+        return [f1]
