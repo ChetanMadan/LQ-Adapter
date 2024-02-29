@@ -201,6 +201,7 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
+    batch_size=32,
     train=dict(
         type='CocoDatasetCustomClassification',
         ann_file='data/GBCU/new_splits/gb_train_4.json',
@@ -314,7 +315,12 @@ data = dict(
                 ])
         ]))
 evaluation = dict(metric=['bbox'], save_best='auto')
-optimizer = dict(type='Adam', lr=0.001)
+optimizer = dict(
+    type='AdamW',
+    lr=0.0001,
+    weight_decay=0.005,
+    constructor='LayerDecayOptimizerConstructor',
+    paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
 optimizer_config = dict(grad_clip=None)
 lr_config = dict(
     policy='step',

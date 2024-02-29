@@ -37,10 +37,16 @@ class MyOwnResnet(nn.Module):
         # inplanes, block, basewidth, scale = 1, GSoP_mode = 1, num_classes=1
         # model = 
         # self.classifier = GbcNet(num_classes=num_classes)
+        self.loss = nn.CrossEntropyLoss()
         self.classifier = models.resnet50(pretrained=True)
+        self.classifier.conv1 = nn.Conv2d(768,64,kernel_size=(3,3),stride=(2,2),padding=(3,3),bias=False)
+        num_ftrs = self.classifier.fc.in_features
+        # Here the size of each output sample is set to 2.
+        # Alternatively, it can be generalized to ``nn.Linear(num_ftrs, len(class_names))``.
+        self.classifier.fc = nn.Linear(num_ftrs, 2)
         
         # net = resnet50(pretrained=False) # You should put 'True' here 
-        self.classifier.conv1 = torch.nn.Conv1d(1, 64, (7, 7), (2, 2), (3, 3), bias=False)
+        # self.classifier.conv1 = torch.nn.Conv1d(1, 64, (7, 7), (2, 2), (3, 3), bias=False)
         # net(batch).size()
         
         # self.init_weights(pretrained=pretrained)
@@ -153,13 +159,16 @@ class MyOwnResnet(nn.Module):
         """
         # print("PLISSSSSSSSSS", img.shape)
         x = self.extract_feat(img)[0]
-        loss = nn.BCELoss()
+        # loss = nn.BCELoss()
+        
         losses = dict()
         outTensor = self.classifier(x)
-        labels = torch.Tensor([[self.annotations[t['ori_filename']]] for t in img_metas]).to(outTensor.device)
-        
-        
-        cross_entropy_loss = loss(outTensor, labels)
+        labels = torch.Tensor([self.annotations[t['ori_filename']] for t in img_metas]).to(outTensor.device)
+        labels = labels.long()
+        # print(outTensor.shape, labels.shape)
+        # print(outTensor, labels)
+        # outTensor = torch.tensor(outTensor, dtype=torch.long)
+        cross_entropy_loss = self.loss(outTensor, labels)
         
         losses.update(loss = cross_entropy_loss)
 
@@ -194,7 +203,7 @@ class MyOwnResnet(nn.Module):
 
         x = self.extract_feat(imgs[0])[0]
         outTensor = self.classifier(x)
-        return outTensor
+        return torch.max(outTensor, 1)[1]
         
         
     @auto_fp16(apply_to=('img', ))
@@ -212,6 +221,26 @@ class MyOwnResnet(nn.Module):
             return self.forward_train(img, img_metas, **kwargs)
         else:
             return self.forward_test(img, img_metas, **kwargs)
+
+
+class FocalLoss(nn.Module):
+    
+    def __init__(self, weight=None, 
+                 gamma=2., reduction='none'):
+        nn.Module.__init__(self)
+        self.weight = weight
+        self.gamma = gamma
+        self.reduction = reduction
+        
+    def forward(self, input_tensor, target_tensor):
+        log_prob = F.log_softmax(input_tensor, dim=-1)
+        prob = torch.exp(log_prob)
+        return F.nll_loss(
+            ((1 - prob) ** self.gamma) * log_prob, 
+            target_tensor, 
+            weight=self.weight,
+            reduction = self.reduction
+        )
 
 class GbcNet(nn.Module):
 
@@ -314,4 +343,4 @@ class GbcNet(nn.Module):
         # print("HHHHHHHHHHH", x.shape)
         x = self.fc(x)
 
-        return self.sigmoid(x)
+        return x

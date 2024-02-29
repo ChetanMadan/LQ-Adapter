@@ -146,6 +146,6 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         f2 = self.norm2(c2)
         f3 = self.norm3(c3)
         f4 = self.norm4(c4)
-        return [f1, f2, f3, f4]
-        # print("F1 SHAPE: ", f1.shape, something.shape, f2.shape, f3.shape, f4.shape)
-        # return [f1]
+        # return [f1, f2, f3, f4]
+        print("F1 SHAPE: ", f1.shape, something.shape, f2.shape, f3.shape, f4.shape)
+        return [f1]

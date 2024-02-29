@@ -41,6 +41,7 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
+    batch_size=32,
     train=dict(type=dataset_type,
                ann_file=data_root + 'new_splits/gb_train_4.json',
                img_prefix=data_root + 'imgs/',
