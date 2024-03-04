@@ -5,6 +5,7 @@ import logging
 import os.path as osp
 import tempfile
 import warnings
+import cv2
 import torch
 from collections import OrderedDict
 import traceback
@@ -17,13 +18,14 @@ from mmdet.core import eval_recalls
 from mmdet.datasets.api_wrappers import COCO, COCOeval
 from mmdet.datasets.builder import DATASETS
 from mmdet.datasets.custom import CustomDataset
-import cv2
+
 from sklearn.metrics import confusion_matrix
 import json
 import traceback
 
 # dataset = "GBCU-Shared"
-dataset = "GBCU"
+# dataset = "GBCU"
+dataset = "GBCU_classification"
 # dataset = "DDSM_2k_yolo_v5"
 # dataset = "ddsm_updated"
 
@@ -56,6 +58,8 @@ class CocoDatasetCustomClassification(CustomDataset):
         CLASSES = ('benign','malignant')
     elif dataset=="ddsm_updated":
         CLASSES = ('mal',)
+    elif dataset=="GBCU_classification":
+        CLASSES = ('normal','malignant')
     else:
         CLASSES = ('malignant',)
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142), (0, 0, 230),

@@ -7,10 +7,10 @@
 dataset_type = 'CocoDatasetCustomClassification'
 data_root = 'data/GBCU/'
 # data_root = 'data/GBCU-Shared/'
+BATCH_SIZE=2
 
-
-classes = ('gb',)
-# classes = ('benign','malignant')
+# classes = ('gb',)
+classes = ('benign','malignant')
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -26,7 +26,8 @@ train_pipeline = [
 test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='MultiScaleFlipAug',
-         img_scale=(1333, 800),
+         scale_factor=1.,
+        #  img_scale=(1333, 800),
          flip=False,
          transforms=[
              dict(type='Resize', keep_ratio=True),
@@ -39,21 +40,20 @@ test_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
-    batch_size=32,
+    samples_per_gpu=BATCH_SIZE,
+    workers_per_gpu=1,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'new_splits/gb_train_4.json',
+               ann_file=data_root + 'new_splits/gb_train_3.json',
                img_prefix=data_root + 'imgs/',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'new_splits/gb_test_4.json',
+             ann_file=data_root + 'new_splits/gb_test_3.json',
              img_prefix=data_root + 'imgs/',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'new_splits/gb_test_4.json',
+              ann_file=data_root + 'new_splits/gb_test_3.json',
               img_prefix=data_root + 'imgs/',
               classes=classes,
               pipeline=test_pipeline))

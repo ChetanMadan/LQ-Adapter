@@ -348,7 +348,12 @@ def load_checkpoint(model, filename, map_location='cpu', strict=False, logger=No
             k.replace('encoder.', ''): v
             for k, v in state_dict.items() if k.startswith('encoder.')
         }
-
+    
+    # if sorted(list(state_dict.keys()))[0].startswith('backbone'):
+    #     state_dict = {
+    #         k.replace('backbone.', ''): v
+    #         for k, v in state_dict.items() if k.startswith('backbone.')
+    #     }
     # reshape absolute position embedding for Swin
     if state_dict.get('absolute_pos_embed') is not None:
         absolute_pos_embed = state_dict['absolute_pos_embed']

@@ -43,23 +43,17 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
                              norm_layer=self.norm_layer, with_cffn=with_cffn,
                              cffn_ratio=cffn_ratio, deform_ratio=deform_ratio,
                              extra_extractor=True if i == len(interaction_indexes) - 1 else False,
-                             with_cp=with_cp)
+                             with_cp=with_cp, index=i)
             for i in range(len(interaction_indexes))
         ])
 
         self.up = nn.ConvTranspose2d(embed_dim, embed_dim, 2, 2)
-        self.up2 = nn.ConvTranspose2d(embed_dim, embed_dim, 2, 2)
-        self.up3 = nn.ConvTranspose2d(embed_dim, embed_dim, 2, 2)
-        self.up4 = nn.ConvTranspose2d(embed_dim, embed_dim, 2, 2)
         self.norm1 = nn.SyncBatchNorm(embed_dim)
         self.norm2 = nn.SyncBatchNorm(embed_dim)
         self.norm3 = nn.SyncBatchNorm(embed_dim)
         self.norm4 = nn.SyncBatchNorm(embed_dim)
 
         self.up.apply(self._init_weights)
-        self.up2.apply(self._init_weights)
-        self.up3.apply(self._init_weights)
-        self.up4.apply(self._init_weights)
         self.spm.apply(self._init_weights)
         self.interactions.apply(self._init_weights)
         self.apply(self._init_deform_weights)
@@ -91,8 +85,6 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         return c2, c3, c4
 
     def forward(self, x):
-        # print("INSIDEEEEEEEE, ", x.shape)
-        # print(x.keys())
         # file_name = s['name'][0]['filename'].split("/")[-1].split(".")[0]
         # x = s['imgTensor']
         # print(file_name, x)
@@ -103,9 +95,7 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
 
         # SPM forward
         c1, c2, c3, c4 = self.spm(x)
-        print("CSSSSSSSSSS", c1.shape, c2.shape, c3.shape, c4.shape)
         c2, c3, c4 = self._add_level_embed(c2, c3, c4)
-        print("aaaaaaaaaaaaaaaa", c1.shape, c2.shape, c3.shape, c4.shape)
         c = torch.cat([c2, c3, c4], dim=1)
 
         # Patch Embedding forward
@@ -115,15 +105,14 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         # Interaction
         
         something = torch.zeros(c.shape).to(c.device)
-        total_something = []
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
             x, c, something = layer(x, c, self.layers[indexes[0]:indexes[-1] + 1],
                          deform_inputs1, deform_inputs2, H, W, something)
-            print("SOMETHING", something.shape)
 
         # Split & Reshape
-        c = something
+        if something is not None:
+            c = something
         c2 = c[:, 0:c2.size(1), :]
         c3 = c[:, c2.size(1):c2.size(1) + c3.size(1), :]
         c4 = c[:, c2.size(1) + c3.size(1):, :]
@@ -139,7 +128,6 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
             x2 = F.interpolate(x3, scale_factor=2, mode='bilinear', align_corners=False)
             x4 = F.interpolate(x3, scale_factor=0.5, mode='bilinear', align_corners=False)
             c1, c2, c3, c4 = c1 + x1, c2 + x2, c3 + x3, c4 + x4
-            # c1 = c1+x1
 
         # Final Norm
         f1 = self.norm1(c1)

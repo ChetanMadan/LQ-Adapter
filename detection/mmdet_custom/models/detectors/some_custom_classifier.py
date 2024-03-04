@@ -10,24 +10,26 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from mmcv.runner import get_dist_info
 import os
 from mmcv_custom import load_checkpoint
-    
+from focal_loss.focal_loss import FocalLoss
+
+
 @DETECTORS.register_module()
 class MyOwnResnet(nn.Module):
     def __init__(self, num_classes, backbone, backbone_ckpt = None, neck=None, pretrained=False, train_file = None, test_file = None, merged_file = None, *args, **kwargs):
         super(MyOwnResnet, self).__init__()
         self.merged_file = merged_file
         self.backbone_ckpt = backbone_ckpt
-        rank, world_size = get_dist_info()
-        rank = int(os.environ.get('LOCAL_RANK', rank))
-
+        
+        self.m = torch.nn.Softmax(dim=-1)
 
         self.num_classes = num_classes
         # self.backbone = DDP(build_backbone(backbone), device_ids=[rank])
         self.backbone = build_backbone(backbone)
-        # load_checkpoint(backbone, backbone_ckpt, map_location='cpu')
+        load_checkpoint(self.backbone, self.backbone_ckpt)
         
         for p in self.backbone.parameters():
-                p.requires_grad_(False)
+            # print(p)
+            p.requires_grad_ = False
                 
         self.annotations = self.file_to_annotations()
         # if neck is not None:
@@ -36,14 +38,15 @@ class MyOwnResnet(nn.Module):
         # self.neck = neck
         # inplanes, block, basewidth, scale = 1, GSoP_mode = 1, num_classes=1
         # model = 
-        # self.classifier = GbcNet(num_classes=num_classes)
+        self.classifier = GbcNet(num_classes=num_classes)
+        # self.loss = FocalLoss(gamma=0.65)
         self.loss = nn.CrossEntropyLoss()
-        self.classifier = models.resnet50(pretrained=True)
-        self.classifier.conv1 = nn.Conv2d(768,64,kernel_size=(3,3),stride=(2,2),padding=(3,3),bias=False)
-        num_ftrs = self.classifier.fc.in_features
+        # self.classifier = models.resnet50(pretrained=True)
+        # self.classifier.conv1 = nn.Conv2d(768,64,kernel_size=(3,3),stride=(2,2),padding=(3,3),bias=False)
+        # num_ftrs = self.classifier.fc.in_features
         # Here the size of each output sample is set to 2.
         # Alternatively, it can be generalized to ``nn.Linear(num_ftrs, len(class_names))``.
-        self.classifier.fc = nn.Linear(num_ftrs, 2)
+        # self.classifier.fc = nn.Linear(num_ftrs, 2)
         
         # net = resnet50(pretrained=False) # You should put 'True' here 
         # self.classifier.conv1 = torch.nn.Conv1d(1, 64, (7, 7), (2, 2), (3, 3), bias=False)
@@ -157,18 +160,14 @@ class MyOwnResnet(nn.Module):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        # print("PLISSSSSSSSSS", img.shape)
-        x = self.extract_feat(img)[0]
-        # loss = nn.BCELoss()
+        x = self.extract_feat(img)
         
         losses = dict()
         outTensor = self.classifier(x)
         labels = torch.Tensor([self.annotations[t['ori_filename']] for t in img_metas]).to(outTensor.device)
         labels = labels.long()
-        # print(outTensor.shape, labels.shape)
-        # print(outTensor, labels)
-        # outTensor = torch.tensor(outTensor, dtype=torch.long)
-        cross_entropy_loss = self.loss(outTensor, labels)
+        
+        cross_entropy_loss = self.loss(self.m(outTensor), labels)
         
         losses.update(loss = cross_entropy_loss)
 
@@ -187,7 +186,6 @@ class MyOwnResnet(nn.Module):
                       img_metas,
                       gt_bboxes_ignore=None,
                       **kwargs):
-        # print("testtttttttttttttttttttttttt", len(imgs))
         for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
             if not isinstance(var, list):
                 raise TypeError(f'{name} must be a list, but got {type(var)}')
@@ -201,7 +199,7 @@ class MyOwnResnet(nn.Module):
             for img_id in range(batch_size):
                 img_meta[img_id]['batch_input_shape'] = tuple(img.size()[-2:])
 
-        x = self.extract_feat(imgs[0])[0]
+        x = self.extract_feat(imgs[0])
         outTensor = self.classifier(x)
         return torch.max(outTensor, 1)[1]
         
@@ -223,52 +221,51 @@ class MyOwnResnet(nn.Module):
             return self.forward_test(img, img_metas, **kwargs)
 
 
-class FocalLoss(nn.Module):
+# class FocalLoss(nn.Module):
     
-    def __init__(self, weight=None, 
-                 gamma=2., reduction='none'):
-        nn.Module.__init__(self)
-        self.weight = weight
-        self.gamma = gamma
-        self.reduction = reduction
+#     def __init__(self, weight=None, 
+#                  gamma=2., reduction='none'):
+#         nn.Module.__init__(self)
+#         self.weight = weight
+#         self.gamma = gamma
+#         self.reduction = reduction
         
-    def forward(self, input_tensor, target_tensor):
-        log_prob = F.log_softmax(input_tensor, dim=-1)
-        prob = torch.exp(log_prob)
-        return F.nll_loss(
-            ((1 - prob) ** self.gamma) * log_prob, 
-            target_tensor, 
-            weight=self.weight,
-            reduction = self.reduction
-        )
+#     def forward(self, input_tensor, target_tensor):
+#         log_prob = F.log_softmax(input_tensor, dim=-1)
+#         prob = torch.exp(log_prob)
+#         return F.nll_loss(
+#             ((1 - prob) ** self.gamma) * log_prob, 
+#             target_tensor, 
+#             weight=self.weight,
+#             reduction = self.reduction)
 
 class GbcNet(nn.Module):
 
-    def __init__(self, inplanes = 768, GSoP_mode = 1, num_classes=1):
+    def __init__(self, inplanes = 768, GSoP_mode = 1, num_classes=2):
         self.inplanes = inplanes
         self.GSoP_mode = GSoP_mode
         super(GbcNet, self).__init__()
         # self.basewidth = basewidth
         # self.scale = scale
-        self.conv1 = nn.Conv2d(inplanes, inplanes // 2, kernel_size=3, stride=2, padding=1,
-                               bias=False)
-        self.bn1 = nn.SyncBatchNorm(inplanes // 2)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # self.conv1 = nn.Conv2d(inplanes, inplanes // 2, kernel_size=3, stride=2, padding=1,
+        #                        bias=False)
+        # self.bn1 = nn.SyncBatchNorm(inplanes // 2)
+        # self.relu = nn.ReLU(inplace=True)
+        # self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         
-        self.conv2 = nn.Conv2d(inplanes // 2, inplanes // 4, kernel_size=7, stride=2, padding=3,
-                               bias=False)
-        self.bn2 = nn.SyncBatchNorm(inplanes // 4)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool2 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # self.conv2 = nn.Conv2d(inplanes // 2, inplanes // 4, kernel_size=7, stride=2, padding=3,
+        #                        bias=False)
+        # self.bn2 = nn.SyncBatchNorm(inplanes // 4)
+        # self.relu = nn.ReLU(inplace=True)
+        # self.maxpool2 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         
-        self.conv3 = nn.Conv2d(inplanes // 4, inplanes // 8, kernel_size=7, stride=2, padding=3,
-                               bias=False)
-        self.bn3 = nn.BatchNorm2d(inplanes // 8)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool3 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # self.conv3 = nn.Conv2d(inplanes // 4, inplanes // 8, kernel_size=7, stride=2, padding=3,
+        #                        bias=False)
+        # self.bn3 = nn.BatchNorm2d(inplanes // 8)
+        # self.relu = nn.ReLU(inplace=True)
+        # self.maxpool3 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         
         
@@ -277,9 +274,15 @@ class GbcNet(nn.Module):
         # self.layer3 = self._make_layer(block, 256, layers[2], stride=2, att_position=att_position[2], att_dim=att_dim)
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=2, att_position=att_position[3], att_dim=att_dim)
         # if GSoP_mode == 1:
-        self.avgpool = nn.AdaptiveAvgPool2d(1) #nn.AvgPool2d(14, stride=1)
-        self.fc = nn.Linear(inplanes // 8, num_classes)
-        self.sigmoid = nn.Sigmoid()
+        self.avgpool1 = nn.AdaptiveAvgPool2d(1) #nn.AvgPool2d(14, stride=1)
+        self.avgpool2 = nn.AdaptiveAvgPool2d(1) #nn.AvgPool2d(14, stride=1)
+        self.avgpool3 = nn.AdaptiveAvgPool2d(1) #nn.AvgPool2d(14, stride=1)
+        self.avgpool4 = nn.AdaptiveAvgPool2d(1) #nn.AvgPool2d(14, stride=1)
+        
+        # self.fc0 = nn.Linear(inplanes, inplanes // 2)
+        # self.relu0 = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(inplanes, num_classes)
+        # self.sigmoid = nn.Sigmoid()
             #print("GSoP-Net1 generating...")
         # else :
         #     self.isqrt_dim = 256
@@ -317,23 +320,26 @@ class GbcNet(nn.Module):
     #     return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool1(x)
+        # x = self.conv1(x)
+        # x = self.bn1(x)
+        # x = self.relu(x)
+        # x = self.maxpool1(x)
 
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-        x = self.maxpool2(x)
+        # x = self.conv2(x)
+        # x = self.bn2(x)
+        # x = self.relu(x)
+        # x = self.maxpool2(x)
         
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu(x)
-        x = self.maxpool3(x)
+        # x = self.conv3(x)
+        # x = self.bn3(x)
+        # x = self.relu(x)
+        # x = self.maxpool3(x)
         
-        
-        x = self.avgpool(x)
+        x1 = self.avgpool1(x[0])
+        x2 = self.avgpool2(x[1])
+        x3 = self.avgpool3(x[2])
+        x4 = self.avgpool4(x[3])
+        x = x1+x2+x3+x4
         # x = self.layer1(x)
         # x = self.layer2(x)
         # x = self.layer3(x)
@@ -341,6 +347,8 @@ class GbcNet(nn.Module):
 
         x = x.view(x.size(0), -1)
         # print("HHHHHHHHHHH", x.shape)
+        # x = self.fc0(x)
+        # x = self.relu0(x)
         x = self.fc(x)
 
         return x

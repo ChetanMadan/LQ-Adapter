@@ -1,9 +1,9 @@
 model = dict(
     type='MyOwnResnet',
     backbone=dict(
-        type='UniPerceiverAdapter',
+        type='UniPerceiverAdapterClassifier',
         patch_size=16,
-        num_classes=1,
+        num_classes=2,
         embed_dim=768,
         depth=12,
         num_heads=12,
@@ -114,14 +114,15 @@ model = dict(
             score_thr=0.05,
             nms=dict(type='nms', iou_threshold=0.5),
             max_per_img=100)),
-    num_classes=1,
-    backbone_ckpt='../best_weights/fold_0_learnable_queries_epoch_28.pth',
-    train_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/train_0',
-    test_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/test_0',
-    merged_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/merged_0')
+    num_classes=2,
+    backbone_ckpt='../best_weights/fold_4_lq_epoch_40.pth',
+    train_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/train_4',
+    test_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/test_4',
+    merged_file='/home/chetan_m/share-gbcu-internal/5-fold/splits/merged_4')
 dataset_type = 'CocoDatasetCustomClassification'
 data_root = 'data/GBCU/'
-classes = ('gb', )
+BATCH_SIZE = 2
+classes = ('benign', 'malignant')
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -129,46 +130,9 @@ train_pipeline = [
     dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(
-        type='AutoAugment',
-        policies=[[{
-            'type':
-            'Resize',
-            'img_scale': [(480, 1333), (512, 1333), (544, 1333), (576, 1333),
-                          (608, 1333), (640, 1333), (672, 1333), (704, 1333),
-                          (736, 1333), (768, 1333), (800, 1333)],
-            'multiscale_mode':
-            'value',
-            'keep_ratio':
-            True
-        }],
-                  [{
-                      'type': 'Resize',
-                      'img_scale': [(400, 1333), (500, 1333), (600, 1333)],
-                      'multiscale_mode': 'value',
-                      'keep_ratio': True
-                  }, {
-                      'type': 'RandomCrop',
-                      'crop_type': 'absolute_range',
-                      'crop_size': (384, 600),
-                      'allow_negative_crop': True
-                  }, {
-                      'type':
-                      'Resize',
-                      'img_scale': [(480, 1333), (512, 1333), (544, 1333),
-                                    (576, 1333), (608, 1333), (640, 1333),
-                                    (672, 1333), (704, 1333), (736, 1333),
-                                    (768, 1333), (800, 1333)],
-                      'multiscale_mode':
-                      'value',
-                      'override':
-                      True,
-                      'keep_ratio':
-                      True
-                  }]]),
-    dict(
         type='RandomCrop',
         crop_type='absolute_range',
-        crop_size=(850, 850),
+        crop_size=(800, 800),
         allow_negative_crop=True),
     dict(
         type='Normalize',
@@ -183,7 +147,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
+        scale_factor=1.0,
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -200,62 +164,20 @@ test_pipeline = [
 ]
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=2,
-    batch_size=32,
+    workers_per_gpu=1,
     train=dict(
         type='CocoDatasetCustomClassification',
         ann_file='data/GBCU/new_splits/gb_train_4.json',
         img_prefix='data/GBCU/imgs/',
-        classes=('gb', ),
+        classes=('benign', 'malignant'),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
             dict(type='RandomFlip', flip_ratio=0.5),
             dict(
-                type='AutoAugment',
-                policies=[[{
-                    'type':
-                    'Resize',
-                    'img_scale': [(480, 1333), (512, 1333), (544, 1333),
-                                  (576, 1333), (608, 1333), (640, 1333),
-                                  (672, 1333), (704, 1333), (736, 1333),
-                                  (768, 1333), (800, 1333)],
-                    'multiscale_mode':
-                    'value',
-                    'keep_ratio':
-                    True
-                }],
-                          [{
-                              'type': 'Resize',
-                              'img_scale': [(400, 1333), (500, 1333),
-                                            (600, 1333)],
-                              'multiscale_mode': 'value',
-                              'keep_ratio': True
-                          }, {
-                              'type': 'RandomCrop',
-                              'crop_type': 'absolute_range',
-                              'crop_size': (384, 600),
-                              'allow_negative_crop': True
-                          }, {
-                              'type':
-                              'Resize',
-                              'img_scale': [(480, 1333), (512, 1333),
-                                            (544, 1333), (576, 1333),
-                                            (608, 1333), (640, 1333),
-                                            (672, 1333), (704, 1333),
-                                            (736, 1333), (768, 1333),
-                                            (800, 1333)],
-                              'multiscale_mode':
-                              'value',
-                              'override':
-                              True,
-                              'keep_ratio':
-                              True
-                          }]]),
-            dict(
                 type='RandomCrop',
                 crop_type='absolute_range',
-                crop_size=(850, 850),
+                crop_size=(800, 800),
                 allow_negative_crop=True),
             dict(
                 type='Normalize',
@@ -270,12 +192,12 @@ data = dict(
         type='CocoDatasetCustomClassification',
         ann_file='data/GBCU/new_splits/gb_test_4.json',
         img_prefix='data/GBCU/imgs/',
-        classes=('gb', ),
+        classes=('benign', 'malignant'),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(
                 type='MultiScaleFlipAug',
-                img_scale=(1333, 800),
+                scale_factor=1.0,
                 flip=False,
                 transforms=[
                     dict(type='Resize', keep_ratio=True),
@@ -294,12 +216,12 @@ data = dict(
         type='CocoDatasetCustomClassification',
         ann_file='data/GBCU/new_splits/gb_test_4.json',
         img_prefix='data/GBCU/imgs/',
-        classes=('gb', ),
+        classes=('benign', 'malignant'),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(
                 type='MultiScaleFlipAug',
-                img_scale=(1333, 800),
+                scale_factor=1.0,
                 flip=False,
                 transforms=[
                     dict(type='Resize', keep_ratio=True),
@@ -317,7 +239,7 @@ data = dict(
 evaluation = dict(metric=['bbox'], save_best='auto')
 optimizer = dict(
     type='AdamW',
-    lr=0.0001,
+    lr=1e-05,
     weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))

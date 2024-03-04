@@ -12,13 +12,13 @@ _base_ = [
 pretrained = 'pretrained/uni-perceiver-base-L12-H768-224size-torch-pretrained_converted.pth'
 model = dict(
     type="MyOwnResnet",
-    num_classes=1,
+    num_classes=2,
     backbone_ckpt = "../best_weights/fold_0_learnable_queries_epoch_28.pth",
     backbone=dict(
         _delete_=True,
-        type='UniPerceiverAdapter',
+        type='UniPerceiverAdapterClassifier',
         patch_size=16,
-        num_classes=1,
+        num_classes=2,
         embed_dim=768,
         depth=12,
         num_heads=12,
@@ -53,39 +53,39 @@ train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
-    dict(type='AutoAugment',
-         policies=[
-             [
-                 dict(type='Resize',
-                      img_scale=[(480, 1333), (512, 1333), (544, 1333), (576, 1333),
-                                 (608, 1333), (640, 1333), (672, 1333), (704, 1333),
-                                 (736, 1333), (768, 1333), (800, 1333)],
-                      multiscale_mode='value',
-                      keep_ratio=True)
-             ],
-             [
-                 dict(type='Resize',
-                      img_scale=[(400, 1333), (500, 1333), (600, 1333)],
-                      multiscale_mode='value',
-                      keep_ratio=True),
-                 dict(type='RandomCrop',
-                      crop_type='absolute_range',
-                      crop_size=(384, 600),
-                      allow_negative_crop=True),
-                 dict(type='Resize',
-                      img_scale=[(480, 1333), (512, 1333), (544, 1333),
-                                 (576, 1333), (608, 1333), (640, 1333),
-                                 (672, 1333), (704, 1333), (736, 1333),
-                                 (768, 1333), (800, 1333)],
-                      multiscale_mode='value',
-                      override=True,
-                      keep_ratio=True)
-             ]
-         ]),
+    # dict(type='AutoAugment',
+    #      policies=[
+    #          [
+    #              dict(type='Resize',
+    #                   img_scale=[(480, 1333), (512, 1333), (544, 1333), (576, 1333),
+    #                              (608, 1333), (640, 1333), (672, 1333), (704, 1333),
+    #                              (736, 1333), (768, 1333), (800, 1333)],
+    #                   multiscale_mode='value',
+    #                   keep_ratio=True)
+    #          ],
+    #          [
+    #              dict(type='Resize',
+    #                   img_scale=[(400, 1333), (500, 1333), (600, 1333)],
+    #                   multiscale_mode='value',
+    #                   keep_ratio=True),
+    #              dict(type='RandomCrop',
+    #                   crop_type='absolute_range',
+    #                   crop_size=(384, 600),
+    #                   allow_negative_crop=True),
+    #              dict(type='Resize',
+    #                   img_scale=[(480, 1333), (512, 1333), (544, 1333),
+    #                              (576, 1333), (608, 1333), (640, 1333),
+    #                              (672, 1333), (704, 1333), (736, 1333),
+    #                              (768, 1333), (800, 1333)],
+    #                   multiscale_mode='value',
+    #                   override=True,
+    #                   keep_ratio=True)
+    #          ]
+    #      ]),
     dict(type='RandomCrop',
          crop_type='absolute_range',
         #  crop_size=(1024, 1024),
-         crop_size=(850, 850),
+         crop_size=(800, 800),
          allow_negative_crop=True),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -96,7 +96,7 @@ data = dict(train=dict(pipeline=train_pipeline))
 find_unused_parameters = True
 
 optimizer = dict(
-    _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.005,
+    _delete_=True, type='AdamW', lr=0.00001, weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
 

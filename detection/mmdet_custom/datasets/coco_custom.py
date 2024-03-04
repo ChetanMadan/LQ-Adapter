@@ -1,3 +1,4 @@
+import cv2
 import contextlib
 import io
 import itertools
@@ -16,7 +17,7 @@ from mmdet.core import eval_recalls
 from mmdet.datasets.api_wrappers import COCO, COCOeval
 from mmdet.datasets.builder import DATASETS
 from mmdet.datasets.custom import CustomDataset
-import cv2
+
 from sklearn.metrics import confusion_matrix
 import json
 
@@ -25,7 +26,7 @@ dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
 # dataset = "ddsm_updated"
 
-FOLD_NUMBER = 4
+FOLD_NUMBER = 0
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 

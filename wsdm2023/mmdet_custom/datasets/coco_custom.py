@@ -512,15 +512,18 @@ class CocoDatasetCustom(CustomDataset):
         print(cm)
         try:
             print("IOU: ", sum(ious)/ len(ious))
+            print_log(f"IOU: , ${sum(ious)/ len(ious)}", logger=logger)
         except ZeroDivisionError:
             print("ERROR WHILE iou, 0 denominator")
         try:
             print("precision: ", true_positive/(true_positive+false_positive))
+            print_log(f"precision: , ${true_positive/(true_positive+false_positive)}", logger=logger)
         except ZeroDivisionError:
             print("ERROR WHILE PRECISION, 0 denominator")
         
         try:
             print("recall: ", true_positive/(true_positive+false_negative))
+            print_log(f"recall: , ${true_positive/(true_positive+false_negative)}", logger=logger)
         except ZeroDivisionError:
             print("ERROR WHILE RECALL, 0 denominator")
         

@@ -19,7 +19,7 @@ from mmdet.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
 from mmdet.models import build_detector
 
-
+torch.cuda.empty_cache()
 def parse_args():
     parser = argparse.ArgumentParser(
         description='MMDet test (and eval) a model')
