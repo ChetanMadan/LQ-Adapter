@@ -21,7 +21,7 @@ class UniPerceiverAdapterClassifier(UnifiedBertEncoder):
     def __init__(self, pretrain_size=224, num_heads=12, conv_inplane=64, n_points=4,
                  deform_num_heads=6, init_values=0., with_cffn=True, cffn_ratio=0.25,
                  deform_ratio=1.0, add_vit_feature=True, interaction_indexes=None,
-                 with_cp=False, num_classes=2, *args, **kwargs):
+                 with_cp=False, num_classes=1, *args, **kwargs):
 
         super().__init__(num_heads=num_heads, with_cp=with_cp, *args, **kwargs)
 

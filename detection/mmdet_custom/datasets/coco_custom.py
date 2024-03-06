@@ -26,7 +26,7 @@ dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
 # dataset = "ddsm_updated"
 
-FOLD_NUMBER = 0
+FOLD_NUMBER = 4
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 
@@ -486,6 +486,8 @@ class CocoDatasetCustom(CustomDataset):
                 scores = [i['score'] for i in this_pred]
                 pred_max_score = list(filter(lambda x: x['score'] == max(scores), this_pred))
                 x1, y1, w, h = pred_max_score[0]['bbox']
+                img = cv2.imread(f"data/{dataset}/imgs/{file}")
+                cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
                 centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
                 
                 if np.unique(bboxes[0])[0] == 0:
@@ -496,13 +498,13 @@ class CocoDatasetCustom(CustomDataset):
                     to_write.append([int(ann_info[0]['image_id']), float(iou), float(max(scores))])
                     ious.append(iou)
                 
-                img = cv2.imread(f"data/{dataset}/imgs/{file}")
+                
 
                 for k in range(len(this_pred)):
                     x1, y1, w, h = this_pred[k]['bbox']
                     
-                    cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=2)
-                    cv2.putText(img, "confidence: %0.3f" %(this_pred[k]['score']), (int(x1) - 20, int(y1) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
+                    # cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
+                    # cv2.putText(img, "confidence: %0.3f" %(this_pred[k]['score']), (int(x1) - 20, int(y1) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
                     # cv2.putText(img, "predicted label: %d" %(this_pred[k]['category_id']), (int(x1) - 50, int(y1) - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
                 
                 for k in range(len(bboxes)):

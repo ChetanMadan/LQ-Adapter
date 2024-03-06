@@ -212,7 +212,7 @@ class InteractionBlock(nn.Module):
         for idx, blk in enumerate(blocks):
             x = blk(x, H, W)
         # print(self.index)
-        if self.index == 3:
+        if self.index in [0, 1, 2, 3]:
             # print(self.index)
             c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
                             feat=x, spatial_shapes=deform_inputs2[1],
