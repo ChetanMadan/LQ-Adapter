@@ -104,7 +104,7 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
 
         # Interaction
         
-        something = torch.zeros(c.shape).to(c.device)
+        something = torch.rand(c.shape).to(c.device)
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
             x, c, something = layer(x, c, self.layers[indexes[0]:indexes[-1] + 1],

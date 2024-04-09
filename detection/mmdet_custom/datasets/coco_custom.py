@@ -26,7 +26,7 @@ dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
 # dataset = "ddsm_updated"
 
-FOLD_NUMBER = 4
+FOLD_NUMBER = 1
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 

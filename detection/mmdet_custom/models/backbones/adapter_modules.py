@@ -122,10 +122,11 @@ class Extractor(nn.Module):
             query = query + attn
             
             #other option is to add to existing something
-                
+            # print("BEFORE", query.shape)
             if self.with_cffn:
                 query = query + self.drop_path(self.ffn(self.ffn_norm(query), H, W))
- 
+                # print("AFTER", query.shape)
+            # print("LAST", query.shape)
             # print("inside extractor, after c update ", query.shape , feat.shape, something.shape)
             if something is not None:
                 # some_v2 , _= self.self_attn(something,
