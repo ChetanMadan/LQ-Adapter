@@ -1,8 +1,9 @@
 # Copyright (c) Shanghai AI Lab. All rights reserved.
 _base_ = [
     '../_base_/models/faster_rcnn_r50_fpn.py',
-    '../_base_/datasets/coco_instance.py',
+    # '../_base_/datasets/coco_instance.py',
     # '../_base_/datasets/coco_instance_ddsm.py',
+    '../_base_/datasets/coco_instance_kvasir.py',
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
@@ -94,7 +95,10 @@ find_unused_parameters = True
 
 
 optimizer = dict(
-    _delete_=True, type='AdamW', lr=0.0001, weight_decay=0.005,
+    _delete_=True,
+    type='AdamW',
+    lr=0.0001,
+    weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))
     

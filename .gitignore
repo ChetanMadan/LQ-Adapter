@@ -151,3 +151,6 @@ generated_learnable_queries/
 *.pt
 *.csv
 work_dirs*
+*.zip
+detection/data/
+rsma/

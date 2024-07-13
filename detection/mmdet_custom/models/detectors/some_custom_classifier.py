@@ -10,7 +10,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from mmcv.runner import get_dist_info
 import os
 from mmcv_custom import load_checkpoint
-from focal_loss.focal_loss import FocalLoss
+# from focal_loss.focal_loss import FocalLoss
 
 
 @DETECTORS.register_module()

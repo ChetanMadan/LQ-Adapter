@@ -5,8 +5,8 @@
 # data_root = 'data/coco/'
 
 dataset_type = 'CocoDatasetCustom'
-data_root = 'data/ddsm_updated/'
-data_root = 'data/ddsm/'
+# data_root = 'data/ddsm_updated/'
+data_root = 'data/kvasir/'
 # data_root = 'data/DDSM_actual/'
 
 classes = ('mal',)
@@ -43,17 +43,17 @@ data = dict(
     workers_per_gpu=2,
     batch_size=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'annotations/train.json',
+               ann_file=data_root + 'train.json',
                img_prefix=data_root + 'imgs',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'annotations/val.json',
+             ann_file=data_root + 'test.json',
              img_prefix=data_root + 'imgs',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'annotations/test.json',
+              ann_file=data_root + 'test.json',
               img_prefix=data_root + 'imgs',
               classes=classes,
               pipeline=test_pipeline))

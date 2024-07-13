@@ -213,15 +213,15 @@ class InteractionBlock(nn.Module):
         for idx, blk in enumerate(blocks):
             x = blk(x, H, W)
         # print(self.index)
-        if self.index in [0, 1, 2, 3]:
+        # if self.index in [0, 1, 2, 3]:
             # print(self.index)
-            c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
-                            feat=x, spatial_shapes=deform_inputs2[1],
-                            level_start_index=deform_inputs2[2], H=H, W=W, something=something, sizes=sizes)
-        else: 
-            c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
-                            feat=x, spatial_shapes=deform_inputs2[1],
-                            level_start_index=deform_inputs2[2], H=H, W=W, something=None, sizes=sizes)
+        c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
+                        feat=x, spatial_shapes=deform_inputs2[1],
+                        level_start_index=deform_inputs2[2], H=H, W=W, something=something, sizes=sizes)
+        # else: 
+        #     c, something = self.extractor(query=c, reference_points=deform_inputs2[0],
+        #                     feat=x, spatial_shapes=deform_inputs2[1],
+        #                     level_start_index=deform_inputs2[2], H=H, W=W, something=None, sizes=sizes)
         if self.extra_extractors is not None:
             for extractor in self.extra_extractors:
                 c, something = extractor(query=c, reference_points=deform_inputs2[0],
