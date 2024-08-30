@@ -52,7 +52,7 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         self.norm2 = nn.SyncBatchNorm(embed_dim)
         self.norm3 = nn.SyncBatchNorm(embed_dim)
         self.norm4 = nn.SyncBatchNorm(embed_dim)
-
+        self.something = nn.Embedding(2541, embed_dim)
         self.up.apply(self._init_weights)
         self.spm.apply(self._init_weights)
         self.interactions.apply(self._init_weights)
@@ -103,8 +103,8 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         bs, n, dim = x.shape
 
         # Interaction
+        something = self.something.weight[:, None, :].repeat(1, bs, 1).transpose(0, 1) # nq, bs, d_model
         
-        something = torch.zeros(c.shape).to(c.device)
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
             x, c, something = layer(x, c, self.layers[indexes[0]:indexes[-1] + 1],

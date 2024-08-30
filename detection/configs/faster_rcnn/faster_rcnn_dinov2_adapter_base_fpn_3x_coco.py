@@ -1,9 +1,10 @@
 # Copyright (c) Shanghai AI Lab. All rights reserved.
 _base_ = [
-    '../../_base_/models/faster_rcnn_r50_fpn.py',
-    '../../_base_/datasets/coco_instance.py',
-    '../../_base_/schedules/schedule_3x.py',
-    '../../_base_/default_runtime.py'
+    '../_base_/models/faster_rcnn_r50_fpn.py',
+    # '../_base_/datasets/coco_instance.py',
+    '../_base_/datasets/coco_instance_kvasir.py',
+    '../_base_/schedules/schedule_3x.py',
+    '../_base_/default_runtime.py'
 ]
 # pretrained = 'https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vitb14_pretrain.pth'
 # please download the pretrained weight to the `pretrained/` folder,
@@ -43,7 +44,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
@@ -81,7 +82,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
+    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
 ]
 data = dict(train=dict(pipeline=train_pipeline))
 optimizer = dict(

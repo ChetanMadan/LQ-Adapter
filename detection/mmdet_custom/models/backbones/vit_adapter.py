@@ -104,9 +104,10 @@ class ViTAdapter(TIMMVisionTransformer):
         # Interaction
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
-            x, c = layer(x, c, self.blocks[indexes[0]:indexes[-1] + 1],
-                         deform_inputs1, deform_inputs2, H, W)
-
+            x, c, something = layer(x, c, self.blocks[indexes[0]:indexes[-1] + 1],
+                         deform_inputs1, deform_inputs2, H, W, something)
+        if something is not None:
+            c = something
         # Split & Reshape
         c2 = c[:, 0:c2.size(1), :]
         c3 = c[:, c2.size(1):c2.size(1) + c3.size(1), :]

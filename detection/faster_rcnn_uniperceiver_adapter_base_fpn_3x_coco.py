@@ -115,7 +115,7 @@ model = dict(
             nms=dict(type='nms', iou_threshold=0.5),
             max_per_img=100)))
 dataset_type = 'CocoDatasetCustom'
-data_root = 'data/DDSM_actual/'
+data_root = 'data/kvasir/'
 classes = ('mal', )
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -123,48 +123,7 @@ train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
-    dict(
-        type='AutoAugment',
-        policies=[[{
-            'type':
-            'Resize',
-            'img_scale': [(480, 1333), (512, 1333), (544, 1333), (576, 1333),
-                          (608, 1333), (640, 1333), (672, 1333), (704, 1333),
-                          (736, 1333), (768, 1333), (800, 1333)],
-            'multiscale_mode':
-            'value',
-            'keep_ratio':
-            True
-        }],
-                  [{
-                      'type': 'Resize',
-                      'img_scale': [(400, 1333), (500, 1333), (600, 1333)],
-                      'multiscale_mode': 'value',
-                      'keep_ratio': True
-                  }, {
-                      'type': 'RandomCrop',
-                      'crop_type': 'absolute_range',
-                      'crop_size': (384, 600),
-                      'allow_negative_crop': True
-                  }, {
-                      'type':
-                      'Resize',
-                      'img_scale': [(480, 1333), (512, 1333), (544, 1333),
-                                    (576, 1333), (608, 1333), (640, 1333),
-                                    (672, 1333), (704, 1333), (736, 1333),
-                                    (768, 1333), (800, 1333)],
-                      'multiscale_mode':
-                      'value',
-                      'override':
-                      True,
-                      'keep_ratio':
-                      True
-                  }]]),
-    dict(
-        type='RandomCrop',
-        crop_type='absolute_range',
-        crop_size=(900, 900),
-        allow_negative_crop=True),
+    dict(type='Resize', img_scale=(330, 330), keep_ratio=False),
     dict(
         type='Normalize',
         mean=[123.675, 116.28, 103.53],
@@ -178,10 +137,10 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
+        img_scale=(330, 330),
         flip=False,
         transforms=[
-            dict(type='Resize', keep_ratio=True),
+            dict(type='Resize', keep_ratio=False),
             dict(type='RandomFlip'),
             dict(
                 type='Normalize',
@@ -199,59 +158,14 @@ data = dict(
     batch_size=2,
     train=dict(
         type='CocoDatasetCustom',
-        ann_file='data/DDSM_actual/annotations/instances_train2017.json',
-        img_prefix='data/DDSM_actual/train2017',
+        ann_file='data/kvasir/train_new.json',
+        img_prefix='data/kvasir/imgs',
         classes=('mal', ),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
             dict(type='RandomFlip', flip_ratio=0.5),
-            dict(
-                type='AutoAugment',
-                policies=[[{
-                    'type':
-                    'Resize',
-                    'img_scale': [(480, 1333), (512, 1333), (544, 1333),
-                                  (576, 1333), (608, 1333), (640, 1333),
-                                  (672, 1333), (704, 1333), (736, 1333),
-                                  (768, 1333), (800, 1333)],
-                    'multiscale_mode':
-                    'value',
-                    'keep_ratio':
-                    True
-                }],
-                          [{
-                              'type': 'Resize',
-                              'img_scale': [(400, 1333), (500, 1333),
-                                            (600, 1333)],
-                              'multiscale_mode': 'value',
-                              'keep_ratio': True
-                          }, {
-                              'type': 'RandomCrop',
-                              'crop_type': 'absolute_range',
-                              'crop_size': (384, 600),
-                              'allow_negative_crop': True
-                          }, {
-                              'type':
-                              'Resize',
-                              'img_scale': [(480, 1333), (512, 1333),
-                                            (544, 1333), (576, 1333),
-                                            (608, 1333), (640, 1333),
-                                            (672, 1333), (704, 1333),
-                                            (736, 1333), (768, 1333),
-                                            (800, 1333)],
-                              'multiscale_mode':
-                              'value',
-                              'override':
-                              True,
-                              'keep_ratio':
-                              True
-                          }]]),
-            dict(
-                type='RandomCrop',
-                crop_type='absolute_range',
-                crop_size=(900, 900),
-                allow_negative_crop=True),
+            dict(type='Resize', img_scale=(330, 330), keep_ratio=False),
             dict(
                 type='Normalize',
                 mean=[123.675, 116.28, 103.53],
@@ -263,17 +177,17 @@ data = dict(
         ]),
     val=dict(
         type='CocoDatasetCustom',
-        ann_file='data/DDSM_actual/annotations/instances_val2017.json',
-        img_prefix='data/DDSM_actual/val2017',
+        ann_file='data/kvasir/test_new.json',
+        img_prefix='data/kvasir/imgs',
         classes=('mal', ),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(
                 type='MultiScaleFlipAug',
-                img_scale=(1333, 800),
+                img_scale=(330, 330),
                 flip=False,
                 transforms=[
-                    dict(type='Resize', keep_ratio=True),
+                    dict(type='Resize', keep_ratio=False),
                     dict(type='RandomFlip'),
                     dict(
                         type='Normalize',
@@ -287,17 +201,17 @@ data = dict(
         ]),
     test=dict(
         type='CocoDatasetCustom',
-        ann_file='data/DDSM_actual/annotations/image_info_test-dev2017.json',
-        img_prefix='data/DDSM_actual/val2017',
+        ann_file='data/kvasir/test_new.json',
+        img_prefix='data/kvasir/imgs',
         classes=('mal', ),
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(
                 type='MultiScaleFlipAug',
-                img_scale=(1333, 800),
+                img_scale=(330, 330),
                 flip=False,
                 transforms=[
-                    dict(type='Resize', keep_ratio=True),
+                    dict(type='Resize', keep_ratio=False),
                     dict(type='RandomFlip'),
                     dict(
                         type='Normalize',

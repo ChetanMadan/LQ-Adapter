@@ -206,6 +206,10 @@ def main():
     else:
         model.CLASSES = dataset.CLASSES
 
+    
+    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    print("toototoototoal parameters", pytorch_total_params)
     if not distributed:
         model = MMDataParallel(model, device_ids=cfg.gpu_ids)
         outputs = single_gpu_test(model, data_loader, args.show, args.show_dir,

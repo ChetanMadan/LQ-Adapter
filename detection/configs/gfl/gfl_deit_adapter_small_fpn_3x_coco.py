@@ -1,11 +1,12 @@
 # Copyright (c) Shanghai AI Lab. All rights reserved.
 _base_ = [
-    '../_base_/datasets/coco_detection.py',
+    # '../_base_/datasets/coco_detection.py',
+    '../_base_/datasets/coco_instance_kvasir.py',
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
-# pretrained = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
-pretrained = 'pretrained/deit_small_patch16_224-cd65a155.pth'
+pretrained = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
+# pretrained = 'pretrained/deit_small_patch16_224-cd65a155.pth'
 model = dict(
     type='GFL',
     backbone=dict(
@@ -36,7 +37,7 @@ model = dict(
         num_outs=5),
     bbox_head=dict(
         type='GFLHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,
@@ -72,7 +73,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[

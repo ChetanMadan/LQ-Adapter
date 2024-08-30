@@ -150,7 +150,8 @@ generated_learnable_queries/
 *.json
 *.pt
 *.csv
-work_dirs*
+work_dir*
 *.zip
 detection/data/
 rsma/
+after_wacv/

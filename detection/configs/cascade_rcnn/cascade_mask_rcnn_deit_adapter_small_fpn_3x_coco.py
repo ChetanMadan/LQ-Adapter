@@ -1,12 +1,12 @@
 # Copyright (c) Shanghai AI Lab. All rights reserved.
 _base_ = [
     '../_base_/models/cascade_mask_rcnn_r50_fpn.py',
-    '../_base_/datasets/coco_instance.py',
+    '../_base_/datasets/coco_instance_kvasir.py',
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
-# pretrained = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
-pretrained = 'pretrained/deit_small_patch16_224-cd65a155.pth'
+pretrained = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
+# pretrained = 'pretrained/deit_small_patch16_224-cd65a155.pth'
 model = dict(
     backbone=dict(
         _delete_=True,
@@ -43,7 +43,7 @@ model = dict(
                 conv_out_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=80,
+                num_classes=1,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0., 0., 0., 0.],
@@ -62,7 +62,7 @@ model = dict(
                 conv_out_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=80,
+                num_classes=1,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0., 0., 0., 0.],
@@ -81,7 +81,7 @@ model = dict(
                 conv_out_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=80,
+                num_classes=1,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0., 0., 0., 0.],
@@ -100,7 +100,7 @@ img_norm_cfg = dict(
 # augmentation strategy originates from DETR / Sparse RCNN
 train_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
@@ -138,7 +138,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
+    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
 ]
 data = dict(train=dict(pipeline=train_pipeline))
 optimizer = dict(

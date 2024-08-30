@@ -24,10 +24,10 @@ import json
 # dataset = "GBCU-Shared"
 # dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
-dataset = "DDSM_actual"
-dataset="ddsm"
+# dataset = "DDSM_actual"
+# dataset="ddsm"
 dataset='kvasir'
-FOLD_NUMBER = 1
+FOLD_NUMBER = 10
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
 
@@ -453,7 +453,6 @@ class CocoDatasetCustom(CustomDataset):
         for i in range(len(self.img_ids)):
             ann_ids = self.coco.get_ann_ids(img_ids=self.img_ids[i])
             ann_info = self.coco.load_anns(ann_ids)
-            # print(ann_info)
             if len(ann_info) == 0:
                 continue
             bboxes = []
@@ -490,31 +489,41 @@ class CocoDatasetCustom(CustomDataset):
                 pred_max_score = list(filter(lambda x: x['score'] == max(scores), this_pred))
                 x1, y1, w, h = pred_max_score[0]['bbox']
                 img = cv2.imread(f"data/{dataset}/imgs/{file}")
-                cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
+                
+                
+                # cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
+                
                 centroid = [(x1+x1+w)/2, (y1+y1+h)/2]
                 
                 if np.unique(bboxes[0])[0] == 0:
                     pass
                 else:
-                    iou, intersection_region = self.get_iou([x1, y1, x1 + w, y1 + h], bboxes[0])
+                    iou = 0
+                    for qq in bboxes:
+                        mm_iou, intersection_region = self.get_iou([x1, y1, x1 + w, y1 + h], qq)
+                        iou = max(iou, mm_iou)
                     intersection_regions.append(intersection_region)
                     to_write.append([int(ann_info[0]['image_id']), float(iou), float(max(scores))])
                     ious.append(iou)
                 
-                
+                pliiiii = ["cju0vtox5ain6099360pu62rp.jpg", "ck2bxw18mmz1k0725litqq2mc.jpg", "cju7dz5yy2i7z0801ausi7rna.jpg"]
+
+
 
                 for k in range(len(this_pred)):
-                    x1, y1, w, h = this_pred[k]['bbox']
+                    x1, y1, w, h = this_pred[0]['bbox']
                     
-                    # cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
+                    cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color=(0,0,255), thickness=3)
                     # cv2.putText(img, "confidence: %0.3f" %(this_pred[k]['score']), (int(x1) - 20, int(y1) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
                     # cv2.putText(img, "predicted label: %d" %(this_pred[k]['category_id']), (int(x1) - 50, int(y1) - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
-                
+                if file in pliiiii:
+                    cv2.imwrite(f"generated/{dataset}/fold_{FOLD_NUMBER}/{file}_no_gt.png", img)
                 for k in range(len(bboxes)):
                     # cv2.putText(img, "ground truth label: %d" %(gt_category), (int(bboxes[k][0]), int(bboxes[k][1]) + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, 2)
                     cv2.rectangle(img, (int(bboxes[k][0]), int(bboxes[k][1])), (int(bboxes[k][2]), int(bboxes[k][3])), color=(0,255,0), thickness=2)
                 
-                cv2.imwrite(f"generated/{dataset}/fold_{FOLD_NUMBER}/{file}.png", img)
+                if file in pliiiii:
+                    cv2.imwrite(f"generated/{dataset}/fold_{FOLD_NUMBER}/{file}.png", img)
 
                 if self.rectContains(bboxes[0], centroid):
                     true_positive +=1

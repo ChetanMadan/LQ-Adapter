@@ -132,6 +132,7 @@ class Extractor(nn.Module):
                 # some_v2 , _= self.self_attn(something,
                 #              query,query,
                 #              )
+                # print(something.shape, feat.shape)
                 some_v2 = self.attn_2(self.query_norm(something), reference_points,
                              self.feat_norm(feat), spatial_shapes,
                              level_start_index, None)
@@ -206,7 +207,6 @@ class InteractionBlock(nn.Module):
     
     def forward(self, x, c, blocks, deform_inputs1, deform_inputs2, H, W, something, sizes=None):
         # something => Fs(p)(1)
-        
         x = self.injector(query=x, reference_points=deform_inputs1[0],
                           feat=c, spatial_shapes=deform_inputs1[1],
                           level_start_index=deform_inputs1[2])
