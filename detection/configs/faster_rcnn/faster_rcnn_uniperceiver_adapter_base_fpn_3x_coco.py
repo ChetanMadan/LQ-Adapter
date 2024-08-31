@@ -1,9 +1,9 @@
 # Copyright (c) Shanghai AI Lab. All rights reserved.
 _base_ = [
     '../_base_/models/faster_rcnn_r50_fpn.py',
-    # '../_base_/datasets/coco_instance.py',
+    '../_base_/datasets/coco_instance.py',
     # '../_base_/datasets/coco_instance_ddsm.py',
-    '../_base_/datasets/coco_instance_kvasir.py',
+    # '../_base_/datasets/coco_instance_kvasir.py',
     '../_base_/schedules/schedule_3x.py',
     '../_base_/default_runtime.py'
 ]
@@ -45,7 +45,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
-    dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='RandomFlip', flip_ratio=0.0),
     # dict(type='AutoAugment',
     #      policies=[
     #          [
@@ -77,10 +77,10 @@ train_pipeline = [
     #      ]),
     # dict(type='RandomCrop',
     #      crop_type='absolute_range',
-    #     #  crop_size=(900, 900),
-    #      crop_size=(330, 330),
+    #      crop_size=(900, 900),
+    #     #  crop_size=(330, 330),
     #      allow_negative_crop=True),
-    dict(type='Resize', img_scale=(330, 330), keep_ratio=False),
+    dict(type='Resize', img_scale=(900, 900), keep_ratio=False),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
@@ -97,7 +97,7 @@ find_unused_parameters = True
 
 optimizer = dict(
     _delete_=True,
-    type='AdamW', lr=0.0001, weight_decay=0.005,
+    type='AdamW', lr=0.001, weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))    
 

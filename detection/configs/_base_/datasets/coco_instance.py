@@ -26,33 +26,40 @@ train_pipeline = [
 test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='MultiScaleFlipAug',
-         img_scale=(1333, 800),
+        #  img_scale=(1333, 800),
+         img_scale=(900, 900),
          flip=False,
          transforms=[
-             dict(type='Resize', keep_ratio=True),
+             dict(type='Resize', keep_ratio=False),
              dict(type='RandomFlip'),
              dict(type='Normalize', **img_norm_cfg),
              dict(type='Pad', size_divisor=32),
              dict(type='ImageToTensor', keys=['img']),
              dict(type='Collect', keys=['img']),
-         ])
+         ]),
+    # dict(type='Resize', img_scale=(900, 900), keep_ratio=False),
+    # dict(type='RandomFlip', flip_ratio=0.0),
+    # dict(type='Normalize', **img_norm_cfg),
+    # dict(type='Pad', size_divisor=32),
+    # dict(type='ImageToTensor', keys=['img']),
+    # dict(type='Collect', keys=['img'])
 ]
 
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(type=dataset_type,
-               ann_file=data_root + 'new_splits/gb_train_1.json',
+               ann_file=data_root + 'new_splits/gb_train_0.json',
                img_prefix=data_root + 'imgs/',
                classes=classes,
                pipeline=train_pipeline),
     val=dict(type=dataset_type,
-             ann_file=data_root + 'new_splits/gb_test_1.json',
+             ann_file=data_root + 'new_splits/gb_test_0.json',
              img_prefix=data_root + 'imgs/',
              classes=classes,
              pipeline=test_pipeline),
     test=dict(type=dataset_type,
-              ann_file=data_root + 'new_splits/gb_test_1.json',
+              ann_file=data_root + 'new_splits/gb_test_0.json',
               img_prefix=data_root + 'imgs/',
               classes=classes,
               pipeline=test_pipeline))

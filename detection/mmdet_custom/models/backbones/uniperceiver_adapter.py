@@ -52,11 +52,14 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         self.norm2 = nn.SyncBatchNorm(embed_dim)
         self.norm3 = nn.SyncBatchNorm(embed_dim)
         self.norm4 = nn.SyncBatchNorm(embed_dim)
-        self.something = nn.Embedding(2541, embed_dim)
+        # self.something = nn.Embedding(2541, embed_dim)
+        self.something = nn.Embedding(17661, embed_dim)
         self.up.apply(self._init_weights)
         self.spm.apply(self._init_weights)
         self.interactions.apply(self._init_weights)
         self.apply(self._init_deform_weights)
+        nn.init.uniform_(self.something.weight, -1.0, 1.0)
+        self.something.apply(self._init_weights)
         normal_(self.level_embed)
 
     def _init_weights(self, m):
