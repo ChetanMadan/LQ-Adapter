@@ -58,8 +58,8 @@ class UniPerceiverAdapter(UnifiedBertEncoder):
         self.spm.apply(self._init_weights)
         self.interactions.apply(self._init_weights)
         self.apply(self._init_deform_weights)
-        nn.init.uniform_(self.something.weight, -1.0, 1.0)
-        self.something.apply(self._init_weights)
+        nn.init.normal(self.something.weight)
+        # self.something.apply(self._init_weights)
         normal_(self.level_embed)
 
     def _init_weights(self, m):

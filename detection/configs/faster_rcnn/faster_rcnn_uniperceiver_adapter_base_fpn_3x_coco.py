@@ -97,7 +97,7 @@ find_unused_parameters = True
 
 optimizer = dict(
     _delete_=True,
-    type='AdamW', lr=0.001, weight_decay=0.005,
+    type='AdamW', lr=0.00001, weight_decay=0.005,
     constructor='LayerDecayOptimizerConstructor',
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.65))    
 

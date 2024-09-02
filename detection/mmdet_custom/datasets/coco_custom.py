@@ -22,11 +22,11 @@ from sklearn.metrics import confusion_matrix
 import json
 
 # dataset = "GBCU-Shared"
-# dataset = "GBCU"
+dataset = "GBCU"
 # dataset = "DDSM_2k_yolo_v5"
 # dataset = "DDSM_actual"
 # dataset="ddsm"
-dataset='kvasir'
+# dataset='kvasir'
 FOLD_NUMBER = 10
 
 params = {"learning_rate": 0.0001, "optimizer": "AdamW", "weight_decay":0.05}
@@ -36,8 +36,8 @@ class CocoDatasetCustom(CustomDataset):
     if dataset == "GBCU-Shared":
         CLASSES = ('gb',)
     elif dataset=="GBCU":
-        # CLASSES = ('gb',)
-        CLASSES = ('benign','malignant')
+        CLASSES = ('gb',)
+        # CLASSES = ('benign','malignant')
     elif dataset=="DDSM_actual":
         CLASSES = ('mal',)
     elif dataset=="kvasir":
