@@ -20,7 +20,3 @@ doi = {10.1109/WACV61041.2025.00064}
 
 This repository is released under the Apache 2.0 license as found in the [LICENSE](LICENSE.md) file.
 
-
-
-
-sh dist_test.sh configs/htc++/htc++_beit_adapter_large_fpn_3x_coco.py /path/to/checkpoint_file 8 --eval bbox segm
